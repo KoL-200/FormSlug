@@ -4,8 +4,8 @@
   "description": "��#\u0000 \u0000F\u0000o\u0000r\u0000m\u0000S\u0000l\u0000u\u0000g\u0000\r\u0000 \u0000",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall": "prisma skills sync || exit 0"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
   },
   "repository": {
     "type": "git",
@@ -14,18 +14,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/KoL-200/FormSlug/issues"
   },
   "homepage": "https://github.com/KoL-200/FormSlug#readme",
   "devDependencies": {
-    "@types/express": "^5.0.6",
-    "@types/node": "^26.4.0",
     "nodemon": "^3.1.14",
-    "prisma": "^7.10.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^7.0.2"
+    "prisma": "^7.10.0"
   },
   "dependencies": {
     "@prisma/client": "^7.10.0",
