@@ -1,12 +1,17 @@
-const { hashPassword, comparePassword, hashToken } = require('../utils/hashing');
+const { hashPassword, comparePassword, hashToken, findMatchingToken } = require('../utils/hashing');
 const { prisma } = require('../config/database.Config');
 const { signAccessToken, signRefreshToken } = require('../utils/jwt');
 const { parseDuration } = require('../utils/duration');
-const { ConflictError, UnauthorizedError } = require('../utils/AppError');
+const { UnauthorizedError } = require('../utils/AppError');
 const env = require('../config/env.Config');
+const jwt = require('jsonwebtoken');
 
 function findUserByEmail(email) {
     return prisma.user.findUnique({ where: { email } });
+}
+
+function findUserById(id) {
+    return prisma.user.findUnique({ where: { id } });
 }
 
 function createUser({ email, password_hash, name }) {
@@ -17,6 +22,58 @@ function createRefreshToken({ userId, token_hash, expires_at }) {
     return prisma.refreshToken.create({
         data: { user_id: userId, token_hash, expires_at },
     });
+}
+
+function findRefreshTokenByUserId(userId) {
+    return prisma.refreshToken.findMany(
+        {
+            where: {
+                user_id: userId,
+                revoked_at: null,
+                expires_at: { gt: new Date() },
+            }
+        }
+    )
+}
+
+function findRevokedRefreshTokensByUserId(userId) {
+    return prisma.refreshToken.findMany(
+        {
+            where: {
+                user_id: userId,
+                revoked_at: {
+                    not: null
+                }
+            }
+        }
+    );
+}
+
+function revokeAllUserRefreshTokens(userId) {
+    return prisma.refreshToken.updateMany(
+        {
+            where: {
+                user_id: userId,
+                revoked_at: null
+            },
+            data: {
+                revoked_at: new Date()
+            }
+        }
+    )
+}
+
+function revokeRefreshToken(tokenId) {
+    return prisma.refreshToken.update(
+        {
+            where: {
+                id: tokenId
+            },
+            data: {
+                revoked_at: new Date()
+            }
+        }
+    )
 }
 
 const createNewUser = async ({ email, password, name }) => {
@@ -55,4 +112,50 @@ const loginUser = async ({ email, password }) => {
     return { user: safeUser, accessToken, refreshToken };
 };
 
-module.exports = { createNewUser, loginUser };
+const refreshTokens = async (rawRefreshToken) => {
+    let payload
+    try {
+        payload = jwt.verify(rawRefreshToken, env.JWT_REFRESH_SECRET)
+    } catch (err) {
+        throw new UnauthorizedError('Invalid refresh token')
+    }
+
+    const activeUserRefreshToken = await findRefreshTokenByUserId(payload.userId)
+    const matchedHash = findMatchingToken(rawRefreshToken, activeUserRefreshToken.map((c) => c.token_hash))
+    const matchedToken = activeUserRefreshToken.find((c) => c.token_hash === matchedHash)
+
+    if (!matchedToken) {
+        const revokedUser = await findRevokedRefreshTokensByUserId(payload.userId)
+        const reusedHash = findMatchingToken(rawRefreshToken, revokedUser.map((c) => c.token_hash))
+        if (reusedHash) {
+            await revokeAllUserRefreshTokens(payload.userId)
+        }
+        throw new UnauthorizedError('Invalid refresh token')
+    }
+
+    await revokeRefreshToken(matchedToken.id)
+
+    const user = await findUserById(payload.userId);
+    if (!user) {
+        throw new UnauthorizedError('Invalid refresh token');
+    }
+
+    const newAccessToken = signAccessToken(user);
+    const newRefreshToken = signRefreshToken(user);
+    const newHash = hashToken(newRefreshToken);
+    const expiresAt = new Date(Date.now() + parseDuration(env.JWT_REFRESH_EXPIRATION));
+
+    await createRefreshToken({
+        userId: user.id,
+        token_hash: newHash,
+        expires_at: expiresAt,
+    });
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+}
+
+module.exports = {
+    createNewUser,
+    loginUser,
+    refreshTokens
+};
