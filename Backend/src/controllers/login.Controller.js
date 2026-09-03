@@ -11,7 +11,7 @@ const login = async (req, res) => {
         secure: env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: parseDuration(env.JWT_REFRESH_EXPIRATION),
-        path: '/auth/refresh',
+        path: '/api/v1/auth/refresh',
     });
 
     res.status(200).json({
