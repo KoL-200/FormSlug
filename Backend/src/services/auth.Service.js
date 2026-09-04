@@ -154,8 +154,28 @@ const refreshTokens = async (rawRefreshToken) => {
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
 }
 
+const logoutUser = async (rawRefreshToken) => {
+    if (!rawRefreshToken) return
+
+    let payload
+    try {
+        payload = jwt.verify(rawRefreshToken, env.JWT_REFRESH_SECRET)
+    } catch (err) {
+        return
+    }
+
+    const activeUserRefreshToken = await findRefreshTokenByUserId(payload.userId)
+    const matchedHash = findMatchingToken(rawRefreshToken, activeUserRefreshToken.map((c) => c.token_hash))
+    const matchedToken = activeUserRefreshToken.find((c) => c.token_hash === matchedHash)
+
+    if (matchedToken) {
+        return revokeRefreshToken(matchedToken.id)
+    }
+}
+
 module.exports = {
     createNewUser,
     loginUser,
-    refreshTokens
+    refreshTokens,
+    logoutUser
 };
