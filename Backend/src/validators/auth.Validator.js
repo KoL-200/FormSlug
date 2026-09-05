@@ -15,7 +15,26 @@ const loginSchema = z.object({
         .min(8, 'Enter a valid password'),
 });
 
+const updateSchema = z.object(
+    {
+        name: z.string().min(1, 'Name is required').optional()
+    }
+)
+
+const updatePasswordSchema = z.object(
+    {
+        currentPassword: z
+            .string({ error: 'Current password is required' })
+            .min(8, 'Enter a valid password'),
+        newPassword: z
+            .string({ error: 'New password is required' })
+            .min(8, 'Enter a valid password'),
+    }
+)
+
 module.exports = {
     registerSchema,
     loginSchema,
+    updateSchema,
+    updatePasswordSchema
 };
