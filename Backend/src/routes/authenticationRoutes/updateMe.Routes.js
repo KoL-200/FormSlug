@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
-const { updateUser } = require('../../controllers/authentication/updateMe.Controller')
-const { updateUserPassword } = require('../../controllers/authentication/updateUserPassword.Controller')
+const { updateUser } = require('../../controllers/authenticationControllers/updateMe.Controller')
+const { updateUserPassword } = require('../../controllers/authenticationControllers/updateUserPassword.Controller')
 const authenticate = require('../../middleware/authenicate.Middleware')
 const { updateSchema, updatePasswordSchema } = require('../../validators/auth.Validator')
 const validate = require('../../middleware/validate.Middleware')

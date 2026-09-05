@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 
-const { logout } = require('../../controllers/authentication/logout.Controller')
+const { logout } = require('../../controllers/authenticationControllers/logout.Controller')
 
 router.post('/logout', logout)
 
