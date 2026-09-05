@@ -2,7 +2,7 @@ const { hashPassword, comparePassword, hashToken, findMatchingToken } = require(
 const { prisma } = require('../config/database.Config');
 const { signAccessToken, signRefreshToken } = require('../utils/jwt');
 const { parseDuration } = require('../utils/duration');
-const { UnauthorizedError } = require('../utils/AppError');
+const { UnauthorizedError, NotFoundError, BadRequestError } = require('../utils/AppError');
 const env = require('../config/env.Config');
 const jwt = require('jsonwebtoken');
 
@@ -71,6 +71,28 @@ function revokeRefreshToken(tokenId) {
             },
             data: {
                 revoked_at: new Date()
+            }
+        }
+    )
+}
+
+function updateUser(id, data) {
+    return prisma.user.update(
+        {
+            where: { id },
+            data
+        }
+    )
+}
+
+function updateUserPassword(id, password_hash) {
+    return prisma.user.update(
+        {
+            where: {
+                id
+            },
+            data: {
+                password_hash
             }
         }
     )
@@ -173,9 +195,57 @@ const logoutUser = async (rawRefreshToken) => {
     }
 }
 
+const getMe = async (userId) => {
+    const user = await findUserById(userId)
+
+    if (!user) {
+        throw new NotFoundError('User not found')
+    }
+
+    const { password_hash: _removed, ...safeUser } = user
+    return safeUser
+}
+
+const updateMe = async (userId, data) => {
+    const user = await findUserById(userId)
+
+    if (!user) {
+        throw new NotFoundError('User not found')
+    }
+
+    const update = await updateUser(userId, data)
+    const { password_hash: _removed, ...safeUser } = update
+    return safeUser
+}
+
+const updatePassword = async (userId, { currentPassword, newPassword }) => {
+    const user = await findUserById(userId)
+
+    if (!user) {
+        throw new NotFoundError('User not found')
+    }
+
+    const isCurrentPasswordValid = await comparePassword(currentPassword, user.password_hash)
+    if (!isCurrentPasswordValid) {
+        throw new UnauthorizedError('Current password is incorrect')
+    }
+
+    const isSamePassword = await comparePassword(newPassword, user.password_hash)
+    if (isSamePassword) {
+        throw new BadRequestError('New password must be different from the current password')
+    }
+
+    const passwordHash = await hashPassword(newPassword)
+    await updateUserPassword(userId, passwordHash)
+    await revokeAllUserRefreshTokens(userId)
+}
+
 module.exports = {
     createNewUser,
     loginUser,
     refreshTokens,
-    logoutUser
+    logoutUser,
+    getMe,
+    updateMe,
+    updatePassword
 };
