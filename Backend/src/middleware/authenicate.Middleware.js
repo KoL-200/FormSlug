@@ -13,8 +13,8 @@ const authenticate = (req, res, next) => {
     const token = authHeader.split(' ')[1];
 
     try {
-        const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET);
-        req.user = decoded;
+        const payload = jwt.verify(token, env.JWT_ACCESS_SECRET);
+        req.user = { id: payload.userId };
         next();
     } catch (err) {
         return next(new UnauthorizedError('Invalid token'));
