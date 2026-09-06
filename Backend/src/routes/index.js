@@ -1,10 +1,10 @@
 const express = require('express');
-const healthRoutes = require('./authentication/health.Routes');
-const registerRoutes = require('./register.Routes');
-const loginRoutes = require('./authentication/login.Routes');
-const logoutRoutes = require('./authentication/logout.Routes');
-const getMeRoutes = require('./authentication/getMe.Routes');
-const updateMeRoutes = require('./authentication/updateMe.Routes');
+const healthRoutes = require('./authenticationRoutes/health.Routes');
+const registerRoutes = require('./authenticationRoutes/register.Routes');
+const loginRoutes = require('./authenticationRoutes/login.Routes');
+const logoutRoutes = require('./authenticationRoutes/logout.Routes');
+const getMeRoutes = require('./authenticationRoutes/getMe.Routes');
+const updateMeRoutes = require('./authenticationRoutes/updateMe.Routes');
 
 const router = express.Router();
 
