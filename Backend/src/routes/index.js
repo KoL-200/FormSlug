@@ -9,7 +9,9 @@ const getMeRoutes = require('./authenticationRoutes/getMe.Routes');
 const updateMeRoutes = require('./authenticationRoutes/updateMe.Routes');
 
 // Project Routes
-const createprojectRoutes = require('./projectRoutes/createProject.Routes')
+const createProjectRoutes = require('./projectRoutes/createProject.Routes')
+const getProjectsRoutes = require('./projectRoutes/getProjects.Routes')
+const createFormRoutes = require('./projectRoutes/createForm.Routes')
 
 
 const router = express.Router();
@@ -24,6 +26,8 @@ router.use('/', getMeRoutes);
 router.use('/', updateMeRoutes);
 
 // Project
-router.use('/', createprojectRoutes)
+router.use('/', createProjectRoutes)
+router.use('/', getProjectsRoutes)
+router.use('/', createFormRoutes);
 
 module.exports = router;
