@@ -1,5 +1,7 @@
 const { createProject } = require('../../services/projectServices/createProject.Services');
 const { getProjects } = require('../../services/projectServices/getProjects.Services');
+const { projectUpdate } = require('../../services/projectServices/updateProject.Services');
+const { deleteProject } = require('../../services/projectServices/deletedProject.Services');
 
 const createProjectController = async (req, res) => {
     const userId = req.user.id;
@@ -15,4 +17,23 @@ const getProjectsController = async (req, res) => {
     res.status(200).json({ success: true, data: projects });
 };
 
-module.exports = { createProjectController, getProjectsController };
+const updateProjectController = async (req, res) => {
+    const { projectId } = req.params;
+    const { name } = req.body;
+
+    const updatedProject = await projectUpdate({ projectId, name });
+    res.status(200).json({ success: true, data: updatedProject });
+}
+
+const deleteProjectController = async (req, res) => {
+    const deletedProject = await deleteProject(req.params.projectId);
+
+    res.status(200).json({ success: true, data: deletedProject });
+};
+
+module.exports = {
+    createProjectController,
+    getProjectsController,
+    updateProjectController,
+    deleteProjectController,
+};
