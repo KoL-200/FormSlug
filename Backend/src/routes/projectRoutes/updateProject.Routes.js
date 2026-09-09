@@ -5,9 +5,8 @@ const { createProjectSchema, updateProjectSchema } = require('../../validators/p
 const validate = require('../../middleware/validate.Middleware');
 const authenticate = require('../../middleware/authenicate.Middleware');
 const ownsProject = require('../../middleware/ownsProject.Middleware');
-const { createProjectController, updateProjectController } = require('../../controllers/projectControllers/project.Controllers');
+const { updateProjectController } = require('../../controllers/projectControllers/project.Controllers');
 
-router.post('/projects', authenticate, validate(createProjectSchema), createProjectController)
 router.patch('/projects/:projectId', authenticate, ownsProject, validate(updateProjectSchema), updateProjectController)
 
 module.exports = router
