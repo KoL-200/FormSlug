@@ -7,6 +7,13 @@ const createFormSchema = z.object(
     }
 )
 
+const updateFormSchema = z.object({
+    name: z.string().min(1, 'Name is required').optional(),
+    notification_email: z.string().email('Enter a valid email address').optional(),
+    is_active: z.boolean().optional(),
+})
+
 module.exports = {
     createFormSchema,
+    updateFormSchema,
 }
