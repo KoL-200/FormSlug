@@ -43,7 +43,35 @@ const getForms = async ({ projectId }) => {
     });
 };
 
+const updateForm = async ({ formId, name, notification_email, is_active }) => {
+    const data = {};
+
+    if (name !== undefined) data.name = name;
+    if (notification_email !== undefined) data.notification_email = notification_email;
+    if (is_active !== undefined) data.is_active = is_active;
+
+    return prisma.form.update({
+        where: {
+            id: formId,
+        },
+        data,
+    });
+};
+
+const deleteForm = async (formId) => {
+    return prisma.form.update({
+        where: {
+            id: formId,
+        },
+        data: {
+            deleted_at: new Date(),
+        },
+    });
+};
+
 module.exports = {
     createForm,
     getForms,
+    updateForm,
+    deleteForm,
 };
