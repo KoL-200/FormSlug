@@ -16,6 +16,7 @@ const deleteProjectRoutes = require('./projectRoutes/deleteProject.Routes')
 const createFormRoutes = require('./projectRoutes/createForm.Routes')
 const updateFormRoutes = require('./projectRoutes/updateForm.Routes')
 const deleteFormRoutes = require('./projectRoutes/deleteForm.Routes')
+const activeFormBySlugRoutes = require('./projectRoutes/activeFormBySlug.Routes')
 
 
 const router = express.Router();
@@ -37,5 +38,6 @@ router.use('/', deleteProjectRoutes)
 router.use('/', createFormRoutes);
 router.use('/', updateFormRoutes);
 router.use('/', deleteFormRoutes);
+router.use('/', activeFormBySlugRoutes);
 
 module.exports = router;
