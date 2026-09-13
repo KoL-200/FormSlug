@@ -1,4 +1,5 @@
-const { listSubmissions } = require('../../services/projectServices/listSubmision.Services');
+const { listSubmissions, getSubmissionById } = require('../../services/projectServices/listSubmision.Services');
+const { submissionDelete, submissionRestore } = require('../../services/projectServices/submissionDeleteAndRestore.Services');
 
 const listSubmissionsController = async (req, res) => {
     const formId = req.form.id;
@@ -11,6 +12,36 @@ const listSubmissionsController = async (req, res) => {
     res.status(200).json({ success: true, data: submissions, meta });
 };
 
+const getSubmissionByIdController = async (req, res) => {
+    const formId = req.form.id;
+    const submissionId = req.params.id;
+
+    const result = await getSubmissionById({ formId, submissionId })
+
+    res.status(200).json({ success: true, data: result })
+}
+
+const deleteSubmissionController = async (req, res) => {
+    const formId = req.form.id;
+    const submissionId = req.params.id;
+
+    await submissionDelete({ formId, submissionId })
+
+    res.status(200).json({ success: true, message: 'Submission deleted sucessfully' })
+}
+
+const restoreSubmissionController = async (req, res) => {
+    const formId = req.form.id;
+    const submissionId = req.params.id;
+
+    await submissionRestore({ formId, submissionId })
+
+    res.status(200).json({ success: true, message: 'Submission restored sucessfully' })
+}
+
 module.exports = {
     listSubmissionsController,
+    getSubmissionByIdController,
+    deleteSubmissionController,
+    restoreSubmissionController
 };

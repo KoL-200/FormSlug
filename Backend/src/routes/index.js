@@ -18,6 +18,9 @@ const updateFormRoutes = require('./projectRoutes/updateForm.Routes')
 const deleteFormRoutes = require('./projectRoutes/deleteForm.Routes')
 const activeFormBySlugRoutes = require('./projectRoutes/activeFormBySlug.Routes')
 const listSubmissionsRoutes = require('./projectRoutes/listSubmissions.Routes')
+const getSubmissionRoutes = require('./projectRoutes/getSubmission.Routes')
+const deleteSubmissionRoutes = require('./projectRoutes/deleteSubmission.Routes')
+const restoreSibmisionRoutes = require('./projectRoutes/restoreSubmission.Routes')
 
 
 const router = express.Router();
@@ -41,5 +44,8 @@ router.use('/', updateFormRoutes);
 router.use('/', deleteFormRoutes);
 router.use('/', activeFormBySlugRoutes);
 router.use('/', listSubmissionsRoutes);
+router.use('/', getSubmissionRoutes)
+router.use('/', deleteSubmissionRoutes)
+router.use('/', restoreSibmisionRoutes)
 
 module.exports = router;

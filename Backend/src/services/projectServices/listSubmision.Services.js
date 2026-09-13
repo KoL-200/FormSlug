@@ -1,5 +1,14 @@
 const { prisma } = require('../../config/database.Config');
 
+async function submission({ submissionId, formId }) {
+    return prisma.submission.findFirst({
+        where: {
+            id: submissionId,
+            form_id: formId
+        }
+    });
+}
+
 const listSubmissions = async ({ formId, page, limit, includeDeleted, from, to }) => {
     const where = {
         form_id: formId,
@@ -49,4 +58,14 @@ const listSubmissions = async ({ formId, page, limit, includeDeleted, from, to }
     }
 }
 
-module.exports = { listSubmissions }
+const getSubmissionById = async ({ submissionId, formId }) => {
+    const submisionData = await submission({ submissionId, formId });
+
+    if (!submisionData) {
+        throw new NotFoundError('Submission not found');
+    }
+
+    return submisionData;
+}
+
+module.exports = { listSubmissions, getSubmissionById }

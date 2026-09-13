@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { createProjectSchema, updateProjectSchema } = require('../../validators/projectSchema/project.Validator')
+const { updateProjectSchema } = require('../../validators/projectSchema/project.Validator')
 const validate = require('../../middleware/validate.Middleware');
 const authenticate = require('../../middleware/authenicate.Middleware');
 const ownsProject = require('../../middleware/ownsProject.Middleware');
