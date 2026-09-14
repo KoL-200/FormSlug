@@ -8,6 +8,14 @@ datasource db {
 
 // ------ Models ------ 
 
+enum NotificationStatus {
+    PENDING
+    SENT
+    FAILED
+}
+
+// ------ Models ------ 
+
 model User {
     id            String   @id @default(uuid())
     email         String   @unique
@@ -70,7 +78,21 @@ model Submission {
     created_at DateTime  @default(now())
     updated_at DateTime  @updatedAt
 
-    form Form @relation(fields: [form_id], references: [id], onDelete: Restrict)
+    form             Form              @relation(fields: [form_id], references: [id], onDelete: Restrict)
+    notificationLogs NotificationLog[]
 
     @@index([form_id, created_at])
+}
+
+model NotificationLog {
+    id            String             @id @default(uuid())
+    submission_id String
+    type          String
+    status        NotificationStatus @default(PENDING)
+    attempts      Int                @default(0)
+    last_error    String?
+    created_at    DateTime           @default(now())
+    sent_at       DateTime?
+
+    submission Submission @relation(fields: [submission_id], references: [id], onDelete: Cascade)
 }
