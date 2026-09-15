@@ -1,5 +1,7 @@
 const { activeFormBySlug } = require('../../services/projectServices/activeFormSlug.Services');
 const { validateSubmissionEnvelope } = require('../../utils/validateSubmissionEnvelope');
+const { sendSubmissionNotification } = require('../../services/NotificationServices/notification.Services')
+
 const { prisma } = require('../../config/database.Config');
 
 const HONEYPOT_FIELD = '_gotcha';
@@ -17,7 +19,7 @@ const activeFormBySlugController = async (req, res) => {
     const ipAddress = req.ip;
     const userAgent = req.headers['user-agent'];
 
-    await prisma.submission.create(
+    const submission = await prisma.submission.create(
         {
             data: {
                 form_id: form.id,
@@ -28,7 +30,8 @@ const activeFormBySlugController = async (req, res) => {
         }
     )
 
-    res.json({ success: true });
+    await sendSubmissionNotification({ submission, form });
+    res.status(200).json({ success: true });
 }
 
 module.exports = {
