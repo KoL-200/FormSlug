@@ -6,9 +6,15 @@ datasource db {
     provider = "postgresql"
 }
 
-// ------ Models ------ 
+// ------ Enum ------ 
 
 enum NotificationStatus {
+    PENDING
+    SENT
+    FAILED
+}
+
+enum WebhookDeliveryStatus {
     PENDING
     SENT
     FAILED
@@ -47,8 +53,9 @@ model Project {
     updated_at DateTime  @updatedAt
     deleted_at DateTime?
 
-    user User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-    form Form[]
+    user             User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+    form             Form[]
+    webhookEndpoints WebhookEndpoint[]
 }
 
 model Form {
@@ -95,4 +102,31 @@ model NotificationLog {
     sent_at       DateTime?
 
     submission Submission @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+}
+
+model WebhookEndpoint {
+    id         String   @id @default(uuid())
+    project_id String
+    url        String
+    secret     String
+    events     String[] @default(["Submitted.created"])
+    is_active  Boolean  @default(true)
+    created_at DateTime @default(now())
+
+    project         Project           @relation(fields: [project_id], references: [id], onDelete: Restrict)
+    webhookDelivery WebhookDelivery[]
+}
+
+model WebhookDelivery {
+    id                   String                @id @default(uuid())
+    webhook_endpoint_id  String
+    event_type           String
+    payload              Json
+    status               WebhookDeliveryStatus @default(PENDING)
+    attempts             Int                   @default(0)
+    response_status_code Int?
+    created_at           DateTime              @default(now())
+    delivered_at         DateTime
+
+    webhookEndpoint WebhookEndpoint? @relation(fields: [webhook_endpoint_id], references: [id], onDelete: Cascade)
 }
