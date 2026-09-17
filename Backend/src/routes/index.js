@@ -21,6 +21,7 @@ const listSubmissionsRoutes = require('./projectRoutes/listSubmissions.Routes')
 const getSubmissionRoutes = require('./projectRoutes/getSubmission.Routes')
 const deleteSubmissionRoutes = require('./projectRoutes/deleteSubmission.Routes')
 const restoreSibmisionRoutes = require('./projectRoutes/restoreSubmission.Routes')
+const webhookRoutes = require('./webhookRoutes/webhook.Routes')
 
 
 const router = express.Router();
@@ -47,5 +48,6 @@ router.use('/', listSubmissionsRoutes);
 router.use('/', getSubmissionRoutes)
 router.use('/', deleteSubmissionRoutes)
 router.use('/', restoreSibmisionRoutes)
+router.use('/', webhookRoutes)
 
 module.exports = router;
