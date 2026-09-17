@@ -109,7 +109,7 @@ model WebhookEndpoint {
     project_id String
     url        String
     secret     String
-    events     String[] @default(["Submitted.created"])
+    events     String[] @default(["submission.created"])
     is_active  Boolean  @default(true)
     created_at DateTime @default(now())
 
