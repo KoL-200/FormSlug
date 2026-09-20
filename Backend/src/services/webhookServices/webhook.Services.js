@@ -3,8 +3,6 @@ const { prisma } = require('../../config/database.Config')
 const { nanoid } = require('nanoid')
 const { NotFoundError } = require('../../utils/AppError')
 
-const signPayload = require('../../utils/SignPayload')
-
 const createWebhook = async ({ projectId, url }) => {
     const secret = nanoid(32)
 
