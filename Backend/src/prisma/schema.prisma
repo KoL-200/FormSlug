@@ -127,6 +127,7 @@ model WebhookDelivery {
     attempts             Int                   @default(0)
     response_status_code Int?
     created_at           DateTime              @default(now())
+    updated_at           DateTime              @default(now()) @updatedAt
     delivered_at         DateTime?
 
     webhookEndpoint WebhookEndpoint? @relation(fields: [webhook_endpoint_id], references: [id], onDelete: Cascade)

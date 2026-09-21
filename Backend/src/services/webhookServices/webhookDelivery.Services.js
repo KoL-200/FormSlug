@@ -14,6 +14,7 @@ async function attemptDelivery(delivery, webhook) {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Webhook-Signature': signature,
+                'X-Webhook-Event-Id': delivery.id,
             },
             body: payloadString,
         });
@@ -38,29 +39,39 @@ async function attemptDelivery(delivery, webhook) {
     }
 }
 
-async function claimDelivery(deliveryId) {
-    const result = await prisma.webhookDelivery.updateMany({
-        where: {
+async function claimDelivery(deliveryId, { staleCutoff } = {}) {
+    const where = staleCutoff
+        ? {
             id: deliveryId,
-            status: { in: ['PENDING', 'SENDING'] },
-        },
+            OR: [
+                { status: 'PENDING' },
+                { status: 'SENDING', updated_at: { lt: staleCutoff } },
+            ],
+        }
+        : { id: deliveryId, status: 'PENDING' };
+
+    const result = await prisma.webhookDelivery.updateMany({
+        where,
         data: { status: 'SENDING' },
     });
+
     return result.count === 1;
 }
 
-async function processWebhookDeliveries(deliveries) {
-    for (const delivery of deliveries) {
-        const claimed = await claimDelivery(delivery.id);
-        if (!claimed) continue;
+async function processWebhookDeliveries(deliveries, { staleCutoff } = {}) {
+    await Promise.all(
+        deliveries.map(async (delivery) => {
+            const claimed = await claimDelivery(delivery.id, { staleCutoff });
+            if (!claimed) return;
 
-        const webhook = await prisma.webhookEndpoint.findUnique({
-            where: { id: delivery.webhook_endpoint_id },
-        });
-        if (!webhook) continue;
+            const webhook = await prisma.webhookEndpoint.findUnique({
+                where: { id: delivery.webhook_endpoint_id },
+            });
+            if (!webhook) return;
 
-        await attemptDelivery(delivery, webhook);
-    }
+            await attemptDelivery(delivery, webhook);
+        })
+    );
 }
 
 async function findStuckWebhookDeliveries({ olderThanMs = WEBHOOK_RETRY_STALE_AFTER_MS, limit = 100 } = {}) {
@@ -68,8 +79,10 @@ async function findStuckWebhookDeliveries({ olderThanMs = WEBHOOK_RETRY_STALE_AF
 
     return prisma.webhookDelivery.findMany({
         where: {
-            OR: [{ status: 'PENDING' }, { status: 'SENDING' }],
-            created_at: { lt: cutoff },
+            OR: [
+                { status: 'PENDING', created_at: { lt: cutoff } },
+                { status: 'SENDING', updated_at: { lt: cutoff } },
+            ],
         },
         orderBy: { created_at: 'asc' },
         take: limit,
@@ -78,12 +91,10 @@ async function findStuckWebhookDeliveries({ olderThanMs = WEBHOOK_RETRY_STALE_AF
 
 async function retryStuckWebhookDeliveries({ olderThanMs = WEBHOOK_RETRY_STALE_AFTER_MS, limit = 100 } = {}) {
     const stuckDeliveries = await findStuckWebhookDeliveries({ olderThanMs, limit });
+    if (!stuckDeliveries.length) return 0;
 
-    if (!stuckDeliveries.length) {
-        return 0;
-    }
-
-    await processWebhookDeliveries(stuckDeliveries);
+    const staleCutoff = new Date(Date.now() - olderThanMs);
+    await processWebhookDeliveries(stuckDeliveries, { staleCutoff });
     return stuckDeliveries.length;
 }
 
