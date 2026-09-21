@@ -1,6 +1,7 @@
 const { activeFormBySlug } = require('../../services/projectServices/activeFormSlug.Services');
 const { validateSubmissionEnvelope } = require('../../utils/validateSubmissionEnvelope');
 const { sendSubmissionNotification } = require('../../services/NotificationServices/notification.Services')
+const { processWebhookDeliveries } = require('../../services/webhookServices/webhookDelivery.Services')
 
 const { prisma } = require('../../config/database.Config');
 
@@ -60,6 +61,10 @@ const activeFormBySlugController = async (req, res) => {
         )
         return { submission, deliveries }
     })
+
+    processWebhookDeliveries(deliveries).catch((err) => {
+        console.error('Webhook delivery batch failed unexpectedly', err);
+    });
 
     await sendSubmissionNotification({ submission, form });
     res.status(200).json({ success: true });

@@ -16,6 +16,7 @@ enum NotificationStatus {
 
 enum WebhookDeliveryStatus {
     PENDING
+    SENDING
     SENT
     FAILED
 }
