@@ -33,6 +33,7 @@ model User {
 
     project       Project[]
     refreshTokens RefreshToken[]
+    auditLogs     AuditLog[]
 }
 
 model RefreshToken {
@@ -131,4 +132,15 @@ model WebhookDelivery {
     delivered_at         DateTime?
 
     webhookEndpoint WebhookEndpoint? @relation(fields: [webhook_endpoint_id], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+    id         String   @id @default(uuid())
+    user_id    String?
+    action     String
+    metadata   Json
+    ip_address String
+    created_at DateTime @default(now())
+
+    user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
 }

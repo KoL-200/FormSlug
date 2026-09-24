@@ -2,6 +2,7 @@ const { activeFormBySlug } = require('../../services/projectServices/activeFormS
 const { validateSubmissionEnvelope } = require('../../utils/validateSubmissionEnvelope');
 const { sendSubmissionNotification } = require('../../services/NotificationServices/notification.Services')
 const { processWebhookDeliveries } = require('../../services/webhookServices/webhookDelivery.Services')
+const { perFormRateLimit, perIpRateLimit } = require('../../lib/rateLimiter');
 
 const { prisma } = require('../../config/database.Config');
 
@@ -10,6 +11,20 @@ const HONEYPOT_FIELD = '_gotcha';
 const activeFormBySlugController = async (req, res) => {
     const { slug } = req.params;
     const form = await activeFormBySlug(slug);
+
+    const ipKey = req.ip;
+    const formKey = form.id;
+
+    const [ipResult, formResult] = await Promise.all([
+        perIpRateLimit.limit(ipKey),
+        perFormRateLimit.limit(formKey),
+    ]);
+
+    if (!ipResult.success || !formResult.success) {
+        return res.status(429).json({
+            error: 'Too many requests. Please try again later.',
+        });
+    }
 
     if (req.body[HONEYPOT_FIELD]) {
         return res.status(200).json({ success: true });
