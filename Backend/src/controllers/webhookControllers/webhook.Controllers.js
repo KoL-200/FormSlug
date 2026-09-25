@@ -21,6 +21,17 @@ const deleteWebhookController = async (req, res) => {
     const { projectId, id: webhookId } = req.params;
 
     await deleteWebhook({ projectId, webhookId });
+
+    await writeAuditLog({
+        userId: req.user.id,
+        action: 'webhook.deleted',
+        metadata: {
+            webhookId: req.params.id,
+            projectId: req.params.projectId,
+        },
+        ipAddress: req.ip,
+    });
+
     res.status(200).json({ success: true, message: 'Webhook deleted successfully' });
 };
 

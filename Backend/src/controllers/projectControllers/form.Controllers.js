@@ -1,4 +1,5 @@
 const { createForm, getForms, updateForm, deleteForm } = require('../../services/projectServices/form.Services');
+const { writeAuditLog } = require('../../utils/auditLog');
 
 const createFormController = async (req, res) => {
     const projectId = req.params.projectId;
@@ -26,6 +27,16 @@ const updateFormController = async (req, res) => {
 
 const deleteFormController = async (req, res) => {
     const deletedForm = await deleteForm(req.params.formId);
+
+    await writeAuditLog({
+        userId: req.user.id,
+        action: 'form.deleted',
+        metadata: {
+            formId: req.params.formId,
+            projectId: req.params.projectId,
+        },
+        ipAddress: req.ip,
+    });
 
     res.status(200).json({ success: true, data: deletedForm });
 };

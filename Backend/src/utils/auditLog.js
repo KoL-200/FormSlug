@@ -7,11 +7,11 @@ async function writeAuditLog({ userId = null, action, metadata = {}, ipAddress }
                 user_id: userId,
                 action,
                 metadata,
-                ip_address: ipAddress,
+                ip_address: ipAddress || 'unknown',
             },
         });
     } catch (err) {
-        console.error('Audit log write failed:', err);
+        console.error('Audit log write failed:', { action, err: err.message });
     }
 }
 

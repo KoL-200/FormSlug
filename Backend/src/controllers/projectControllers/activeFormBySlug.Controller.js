@@ -3,6 +3,7 @@ const { validateSubmissionEnvelope } = require('../../utils/validateSubmissionEn
 const { sendSubmissionNotification } = require('../../services/NotificationServices/notification.Services')
 const { processWebhookDeliveries } = require('../../services/webhookServices/webhookDelivery.Services')
 const { perFormRateLimit, perIpRateLimit } = require('../../lib/rateLimiter');
+const { writeAuditLog } = require('../../utils/auditLog');
 
 const { prisma } = require('../../config/database.Config');
 
@@ -21,9 +22,17 @@ const activeFormBySlugController = async (req, res) => {
     ]);
 
     if (!ipResult.success || !formResult.success) {
-        return res.status(429).json({
-            error: 'Too many requests. Please try again later.',
+        await writeAuditLog({
+            userId: null,
+            action: 'rate_limit.triggered',
+            metadata: {
+                formId: form.id,
+                ipAddress: req.ip,
+                limitType: !ipResult.success ? 'ip' : 'form',
+            },
+            ipAddress: req.ip,
         });
+        return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
 
     if (req.body[HONEYPOT_FIELD]) {
