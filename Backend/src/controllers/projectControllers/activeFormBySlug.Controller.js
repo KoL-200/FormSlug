@@ -12,6 +12,7 @@ const HONEYPOT_FIELD = '_gotcha';
 const activeFormBySlugController = async (req, res) => {
     const { slug } = req.params;
     const form = await activeFormBySlug(slug);
+    req.form = form;
 
     const ipKey = req.ip;
     const formKey = form.id;

@@ -7,6 +7,15 @@ const validate = require('../../middleware/validate.Middleware');
 const authenticate = require('../../middleware/authenicate.Middleware');
 const ownsProject = require('../../middleware/ownsProject.Middleware');
 const ownsForm = require('../../middleware/ownsForm.Middleware');
+const { rotateApiKeyController } = require('../../controllers/projectControllers/rotateApikey.Controller')
+
+router.post(
+    '/projects/:projectId/forms/:formId/rotate-key',
+    authenticate,
+    ownsProject,
+    ownsForm,
+    rotateApiKeyController
+);
 
 router.patch(
     '/projects/:projectId/forms/:formId',
