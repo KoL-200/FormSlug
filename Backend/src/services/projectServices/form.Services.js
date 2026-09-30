@@ -1,5 +1,6 @@
 const { prisma } = require('../../config/database.Config');
 const { nanoid } = require('nanoid');
+const { invalidateFormCache } = require('../../utils/FormCache');
 
 async function getUserEmail(userId) {
     return prisma.user.findUnique({
@@ -50,16 +51,19 @@ const updateForm = async ({ formId, name, notification_email, is_active }) => {
     if (notification_email !== undefined) data.notification_email = notification_email;
     if (is_active !== undefined) data.is_active = is_active;
 
-    return prisma.form.update({
+    const form = await prisma.form.update({
         where: {
             id: formId,
         },
         data,
     });
+
+    await invalidateFormCache(form.slug)
+    return form
 };
 
 const deleteForm = async (formId) => {
-    return prisma.form.update({
+    const form = await prisma.form.update({
         where: {
             id: formId,
         },
@@ -67,6 +71,9 @@ const deleteForm = async (formId) => {
             deleted_at: new Date(),
         },
     });
+
+    await invalidateFormCache(form.slug)
+    return form
 };
 
 module.exports = {

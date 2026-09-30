@@ -1,25 +1,18 @@
 const { prisma } = require('../../config/database.Config');
-const { NotFoundError, ForbiddenError } = require('../../utils/AppError');
+const { getCachedForm, setCachedForm } = require('../../utils/FormCache');
 
-async function findActiveFormBySlug(slug) {
-    return prisma.form.findUnique(
-        {
-            where: {
-                slug
-            }
-        }
-    )
-}
+async function activeFormBySlug(slug) {
+    const cached = await getCachedForm(slug);
+    if (cached) {
+        console.log('cache hit')
+        return cached
+    };
 
-const activeFormBySlug = async (slug) => {
-    const form = await findActiveFormBySlug(slug);
+    console.log('db hit')
+    const form = await prisma.form.findUnique({ where: { slug } });
 
-    if (!form || form.deleted_at) {
-        throw new NotFoundError('Form currently not available');
-    }
-
-    if (!form.is_active) {
-        throw new ForbiddenError('This form is currently not accepting submissions');
+    if (form && !form.deleted_at && form.is_active) {
+        await setCachedForm(slug, form);
     }
 
     return form;

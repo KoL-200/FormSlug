@@ -3,8 +3,7 @@ const router = express.Router();
 
 const { activeFormBySlugController } = require('../../controllers/projectControllers/activeFormBySlug.Controller.js');
 const submissionRateLimit = require('../../middleware/submissionRateLimit.Middleware.js');
-const validateApiKey = require('../../middleware/validateApiKey.Middleware.js');
 
-router.post('/f/:slug', submissionRateLimit, validateApiKey, activeFormBySlugController);
+router.post('/f/:slug', submissionRateLimit, activeFormBySlugController);
 
 module.exports = router;

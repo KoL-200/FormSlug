@@ -14,6 +14,17 @@ const activeFormBySlugController = async (req, res) => {
     const form = await activeFormBySlug(slug);
     req.form = form;
 
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        if (!authHeader.startsWith('Bearer ')) {
+            return res.status(403).json({ error: 'Invalid authorization format' });
+        }
+        const providedKey = authHeader.split(' ')[1];
+        if (providedKey !== form.api_key) {
+            return res.status(403).json({ error: 'Invalid API key' });
+        }
+    }
+
     const ipKey = req.ip;
     const formKey = form.id;
 
