@@ -45,6 +45,8 @@ model RefreshToken {
     created_at DateTime  @default(now())
 
     user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+    @@index([user_id, expires_at, revoked_at])
 }
 
 model Project {
@@ -75,6 +77,8 @@ model Form {
 
     project    Project      @relation(fields: [project_id], references: [id], onDelete: Restrict)
     submission Submission[]
+
+    @@index([project_id, created_at])
 }
 
 model Submission {
@@ -90,7 +94,8 @@ model Submission {
     form             Form              @relation(fields: [form_id], references: [id], onDelete: Restrict)
     notificationLogs NotificationLog[]
 
-    @@index([form_id, created_at])
+    @@index([form_id, created_at(sort: Desc)])
+    @@index([form_id, deleted_at])
 }
 
 model NotificationLog {
@@ -104,6 +109,8 @@ model NotificationLog {
     sent_at       DateTime?
 
     submission Submission @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+
+    @@index([submission_id])
 }
 
 model WebhookEndpoint {
@@ -132,6 +139,9 @@ model WebhookDelivery {
     delivered_at         DateTime?
 
     webhookEndpoint WebhookEndpoint? @relation(fields: [webhook_endpoint_id], references: [id], onDelete: Cascade)
+
+    @@index([status, created_at])
+    @@index([status, updated_at])
 }
 
 model AuditLog {
@@ -143,4 +153,6 @@ model AuditLog {
     created_at DateTime @default(now())
 
     user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+    @@index([user_id, created_at])
 }
