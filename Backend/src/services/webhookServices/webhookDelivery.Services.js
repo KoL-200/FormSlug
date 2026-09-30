@@ -59,14 +59,19 @@ async function claimDelivery(deliveryId, { staleCutoff } = {}) {
 }
 
 async function processWebhookDeliveries(deliveries, { staleCutoff } = {}) {
+    // fetch all needed endpoints in one query to prevent N+1 query
+    const webhookIds = [...new Set(deliveries.map(d => d.webhook_endpoint_id))];
+    const webhooks = await prisma.webhookEndpoint.findMany({
+        where: { id: { in: webhookIds } },
+    });
+    const webhookMap = Object.fromEntries(webhooks.map(w => [w.id, w]));
+
     await Promise.all(
         deliveries.map(async (delivery) => {
             const claimed = await claimDelivery(delivery.id, { staleCutoff });
             if (!claimed) return;
 
-            const webhook = await prisma.webhookEndpoint.findUnique({
-                where: { id: delivery.webhook_endpoint_id },
-            });
+            const webhook = webhookMap[delivery.webhook_endpoint_id];
             if (!webhook) return;
 
             await attemptDelivery(delivery, webhook);
