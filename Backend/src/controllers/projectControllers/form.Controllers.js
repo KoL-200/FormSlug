@@ -1,4 +1,4 @@
-const { createForm, getForms, updateForm, deleteForm } = require('../../services/projectServices/form.Services');
+const { createForm, getForms, updateForm, deleteForm, getFormById } = require('../../services/projectServices/form.Services');
 const { writeAuditLog } = require('../../utils/auditLog');
 
 const createFormController = async (req, res) => {
@@ -8,6 +8,11 @@ const createFormController = async (req, res) => {
 
     const createdForm = await createForm({ projectId, userId, name, notificationEmail: notification_email });
     res.status(201).json({ success: true, data: createdForm });
+}
+
+const getFormsByIdController = async (req, res) => {
+    const forms = await getFormById({ formId: req.params.formId, projectId: req.params.projectId });
+    res.status(200).json({ success: true, data: forms });
 }
 
 const getFormsController = async (req, res) => {
@@ -43,6 +48,7 @@ const deleteFormController = async (req, res) => {
 
 module.exports = {
     createFormController,
+    getFormsByIdController,
     getFormsController,
     updateFormController,
     deleteFormController,

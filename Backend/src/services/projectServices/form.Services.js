@@ -1,6 +1,7 @@
 const { prisma } = require('../../config/database.Config');
 const { nanoid } = require('nanoid');
 const { invalidateFormCache } = require('../../utils/FormCache');
+const { redactForm, redactForms } = require('../../utils/redactForm')
 
 async function getUserEmail(userId) {
     return prisma.user.findUnique({
@@ -32,8 +33,15 @@ const createForm = async ({ projectId, userId, name, notificationEmail }) => {
     });
 }
 
+const getFormById = async ({ formId, projectId }) => {
+    const form = await prisma.form.findFirst({
+        where: { id: formId, project_id: projectId, deleted_at: null },
+    });
+    return redactForm(form);
+};
+
 const getForms = async ({ projectId }) => {
-    return prisma.form.findMany({
+    const forms = await prisma.form.findMany({
         where: {
             project_id: projectId,
             deleted_at: null,
@@ -42,6 +50,7 @@ const getForms = async ({ projectId }) => {
             created_at: 'desc',
         },
     });
+    return redactForms(forms);
 };
 
 const updateForm = async ({ formId, name, notification_email, is_active }) => {
@@ -59,7 +68,7 @@ const updateForm = async ({ formId, name, notification_email, is_active }) => {
     });
 
     await invalidateFormCache(form.slug)
-    return form
+    return redactForm(form)
 };
 
 const deleteForm = async (formId) => {
@@ -78,6 +87,7 @@ const deleteForm = async (formId) => {
 
 module.exports = {
     createForm,
+    getFormById,
     getForms,
     updateForm,
     deleteForm,
