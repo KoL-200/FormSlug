@@ -7,6 +7,7 @@ const loginRoutes = require('./authenticationRoutes/login.Routes');
 const logoutRoutes = require('./authenticationRoutes/logout.Routes');
 const getMeRoutes = require('./authenticationRoutes/getMe.Routes');
 const updateMeRoutes = require('./authenticationRoutes/updateMe.Routes');
+const softDeleteAccountRoutes = require('./authenticationRoutes/softDeleteAccount.Routes');
 
 // Project Routes
 const createProjectRoutes = require('./projectRoutes/createProject.Routes')
@@ -34,6 +35,7 @@ router.use('/auth', loginRoutes);
 router.use('/auth', logoutRoutes);
 router.use('/', getMeRoutes);
 router.use('/', updateMeRoutes);
+router.use('/', softDeleteAccountRoutes);
 
 // Project
 router.use('/', createProjectRoutes)

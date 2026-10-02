@@ -6,6 +6,8 @@ const { UnauthorizedError, NotFoundError, BadRequestError } = require('../../uti
 const env = require('../../config/env.Config');
 const jwt = require('jsonwebtoken');
 
+const GRACE_PRTIOD_DAYS = 30
+
 function findUserByEmail(email) {
     return prisma.user.findUnique({ where: { email } });
 }
@@ -109,6 +111,10 @@ const loginUser = async ({ email, password }) => {
     const user = await findUserByEmail(email);
     if (!user) {
         throw new UnauthorizedError('Invalid email or password');
+    }
+
+    if (user.deleted_at) {
+        throw new UnauthorizedError('This account has been deactivated. Please contact support if you believe this is a mistake.');
     }
 
     const isPasswordValid = await comparePassword(password, user.password_hash);
@@ -240,6 +246,39 @@ const updatePassword = async (userId, { currentPassword, newPassword }) => {
     await revokeAllUserRefreshTokens(userId)
 }
 
+const softDeleteUser = async (userId) => {
+    const user = await findUserById(userId)
+
+    if (!user) {
+        throw new NotFoundError('User not found')
+    }
+
+    const now = new Date()
+    const scheduledPurgeDate = new Date(now.getTime() + GRACE_PRTIOD_DAYS * 24 * 60 * 60 * 1000)
+
+    return prisma.$transaction([
+        prisma.user.update({
+            where: { id: userId },
+            data: {
+                deleted_at: now,
+                scheduled_purge_at: scheduledPurgeDate
+            }
+        }),
+        prisma.project.updateMany({
+            where: { user_id: userId, deleted_at: null },
+            data: {
+                deleted_at: now
+            }
+        }),
+        prisma.form.updateMany({
+            where: { project: { user_id: userId }, deleted_at: null },
+            data: {
+                deleted_at: now
+            }
+        })
+    ])
+}
+
 module.exports = {
     createNewUser,
     loginUser,
@@ -247,5 +286,6 @@ module.exports = {
     logoutUser,
     getMe,
     updateMe,
-    updatePassword
+    updatePassword,
+    softDeleteUser
 };
