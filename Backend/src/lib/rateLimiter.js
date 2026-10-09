@@ -18,4 +18,4 @@ const perIpRateLimit = new Ratelimit({
     prefix: 'rl:ip',
 });
 
-module.exports = { perFormRateLimit, perIpRateLimit };
+module.exports = { perFormRateLimit, perIpRateLimit, redis };
