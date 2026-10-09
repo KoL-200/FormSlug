@@ -1,22 +1,29 @@
-require('dotenv').config();
 const { z } = require('zod');
+const logger = require('./logger');
 
 const envSchema = z.object({
-    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-    PORT: z.coerce.number().default(5000),
-    DATABASE_URL: z.string().min(1, 'DATABASE_URL is required').default('postgresql://postgres:algo1502@localhost:5432/Formslug_db?schema=public'),
-    JWT_ACCESS_SECRET: z.string().min(1, 'JWT_ACCESS_SECRET is required').default('1b22f68d95f6b993b1fb8ed48219242a600742e473f1674e52d96ccebef5b99c'),
-    JWT_REFRESH_SECRET: z.string().min(1, 'JWT_REFRESH_SECRET is required').default('99a5276c2563e34d28420fe922ce118cfcaaf8430cf529b7f04d77a4525ed5d8'),
+    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    PORT: z.string().default('3000'),
+    DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+    JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+    JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
     JWT_ACCESS_EXPIRATION: z.string().default('15m'),
     JWT_REFRESH_EXPIRATION: z.string().default('7d'),
+    RESEND_API_KEY: z.string().min(1, 'RESEND_API_KEY is required'),
+    UPSTASH_REDIS_REST_URL: z.string().url('UPSTASH_REDIS_REST_URL must be a valid URL'),
+    UPSTASH_REDIS_REST_TOKEN: z.string().min(1, 'UPSTASH_REDIS_REST_TOKEN is required'),
 });
 
-const parsed = envSchema.safeParse(process.env);
+const result = envSchema.safeParse(process.env);
 
-if (!parsed.success) {
-    console.error('Invalid Environment Variables:');
-    console.error(parsed.error.flatten().fieldErrors);
-    throw new Error('Environment validation failed');
+if (!result.success) {
+    logger.error({
+        issues: result.error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+        })),
+    }, 'Invalid environment configuration');
+    process.exit(1);
 }
 
-module.exports = parsed.data;
+module.exports = result.data;
