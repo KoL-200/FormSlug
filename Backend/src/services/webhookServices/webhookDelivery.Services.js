@@ -1,5 +1,6 @@
 const { prisma } = require('../../config/database.Config');
 const signPayload = require('../../utils/SignPayload');
+const logger = require('../../config/logger');
 
 const WEBHOOK_RETRY_INTERVAL_MS = 30_000;
 const WEBHOOK_RETRY_STALE_AFTER_MS = 2 * 60 * 1000;
@@ -110,7 +111,7 @@ function startWebhookRetrySweep({ intervalMs = WEBHOOK_RETRY_INTERVAL_MS, olderT
 
     const timer = setInterval(() => {
         retryStuckWebhookDeliveries({ olderThanMs, limit }).catch((err) => {
-            console.error('Webhook retry sweep failed:', err);
+            logger.error({ err }, 'Webhook retry sweep failed');
         });
     }, intervalMs);
 

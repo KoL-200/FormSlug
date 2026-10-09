@@ -1,4 +1,5 @@
 const { prisma } = require('../config/database.Config');
+const logger = require('../config/logger');
 
 async function writeAuditLog({ userId = null, action, metadata = {}, ipAddress }) {
     try {
@@ -11,7 +12,7 @@ async function writeAuditLog({ userId = null, action, metadata = {}, ipAddress }
             },
         });
     } catch (err) {
-        console.error('Audit log write failed:', { action, err: err.message });
+        logger.error({ action, err }, 'Audit log write failed');
     }
 }
 

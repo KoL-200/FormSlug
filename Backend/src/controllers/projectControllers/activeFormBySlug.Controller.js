@@ -4,6 +4,7 @@ const { sendSubmissionNotification } = require('../../services/NotificationServi
 const { processWebhookDeliveries } = require('../../services/webhookServices/webhookDelivery.Services')
 const { perFormRateLimit, perIpRateLimit } = require('../../lib/rateLimiter');
 const { writeAuditLog } = require('../../utils/auditLog');
+const logger = require('../../config/logger');
 
 const { prisma } = require('../../config/database.Config');
 
@@ -99,7 +100,7 @@ const activeFormBySlugController = async (req, res) => {
     })
 
     processWebhookDeliveries(deliveries).catch((err) => {
-        console.error('Webhook delivery batch failed unexpectedly', err);
+        (req.log || logger).error({ err, requestId: req.requestId }, 'Webhook delivery batch failed unexpectedly');
     });
 
     await sendSubmissionNotification({ submission, form });

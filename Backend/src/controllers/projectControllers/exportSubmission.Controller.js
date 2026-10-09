@@ -1,5 +1,6 @@
 const { stringify } = require('csv-stringify');
 const { streamSubmissions } = require('../../services/projectServices/exportSubmission.Services');
+const logger = require('../../config/logger');
 
 const exportSubmissionsController = async (req, res) => {
     const formId = req.form.id;
@@ -33,7 +34,7 @@ const exportSubmissionsController = async (req, res) => {
             });
         }
     } catch (err) {
-        console.error('CSV export error:', err);
+        (req.log || logger).error({ err, requestId: req.requestId }, 'CSV export error');
     } finally {
         csvStringifier.end();
     }
