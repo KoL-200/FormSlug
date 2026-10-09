@@ -7,6 +7,30 @@ const authenticate = require('../../middleware/authenicate.Middleware');
 const ownsProject = require('../../middleware/ownsProject.Middleware');
 const { createProjectController, updateProjectController } = require('../../controllers/projectControllers/project.Controllers');
 
+/**
+ * @swagger
+ * /projects:
+ *   post:
+ *     summary: Create a project
+ *     tags: [Projects]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ProjectRequest'
+ *     responses:
+ *       201:
+ *         description: Project created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessProject'
+ *       400:
+ *         $ref: '#/components/responses/ValidationFailed'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.post('/projects', authenticate, validate(createProjectSchema), createProjectController)
 router.patch('/projects/:projectId', authenticate, ownsProject, validate(updateProjectSchema), updateProjectController)
 
