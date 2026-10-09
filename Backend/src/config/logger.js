@@ -1,8 +1,10 @@
-const logger = {
-    info: (...args) => console.log('[INFO]', ...args),
-    warn: (...args) => console.warn('[WARN]', ...args),
-    error: (...args) => console.error('[ERROR]', ...args),
-    debug: (...args) => console.debug('[DEBUG]', ...args),
-};
+const pino = require('pino');
+
+const logger = pino({
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+    transport: process.env.NODE_ENV !== 'production'
+        ? { target: 'pino-pretty', options: { colorize: true } }
+        : undefined,
+});
 
 module.exports = logger;
