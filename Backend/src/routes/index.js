@@ -1,5 +1,6 @@
 const express = require('express');
-const healthRoutes = require('./authenticationRoutes/health.Routes');
+
+const healthRoutes = require('./health.Routes');
 
 // Authentication Routes
 const registerRoutes = require('./authenticationRoutes/register.Routes');
