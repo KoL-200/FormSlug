@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "echo 'No tests yet' && exit 0",
+    "test": "echo 'Test not implemented' && exit 0",
     "migrate": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev"
   },
