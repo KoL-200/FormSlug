@@ -83,6 +83,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check DATABASE_URL shape
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "length: ${#DATABASE_URL}"
+          echo "scheme: [${DATABASE_URL%%://*}]"
+
       - name: Run production migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
