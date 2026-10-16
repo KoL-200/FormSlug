@@ -1,4 +1,4 @@
-const { BadRequestError } = require('./AppError');
+const { UnprocessableEntityError } = require('./AppError');
 
 const MAX_SUBMISSION_FIELDS = 50;
 const MAX_SUBMISSION_VALUE_LENGTH = 10_000;
@@ -14,7 +14,7 @@ function isPlainObject(value) {
 
 function sanitizeAndValidate(value, depth = 0) {
     if (depth >= MAX_DEPTH) {
-        throw new BadRequestError('Submission is nested too deeply');
+        throw new UnprocessableEntityError('Submission is nested too deeply');
     }
 
     if (Array.isArray(value)) {
@@ -26,7 +26,7 @@ function sanitizeAndValidate(value, depth = 0) {
 
     if (isPlainObject(value)) {
         if (Object.keys(value).length > MAX_SUBMISSION_FIELDS) {
-            throw new BadRequestError(`Submission cannot contain more than ${MAX_SUBMISSION_FIELDS} fields`);
+            throw new UnprocessableEntityError(`Submission cannot contain more than ${MAX_SUBMISSION_FIELDS} fields`);
         }
 
         for (const key of Object.keys(value)) {
@@ -40,7 +40,7 @@ function sanitizeAndValidate(value, depth = 0) {
     }
 
     if (typeof value === 'string' && value.length > MAX_SUBMISSION_VALUE_LENGTH) {
-        throw new BadRequestError(
+        throw new UnprocessableEntityError(
             `Submission field values cannot exceed ${MAX_SUBMISSION_VALUE_LENGTH} characters`,
         );
     }
@@ -50,7 +50,7 @@ function sanitizeAndValidate(value, depth = 0) {
 
 function validateSubmissionEnvelope(body) {
     if (!isPlainObject(body)) {
-        throw new BadRequestError('Submission body must be a plain object');
+        throw new UnprocessableEntityError('Submission body must be a plain object');
     }
 
     return sanitizeAndValidate(body);
