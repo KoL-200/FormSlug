@@ -60,6 +60,10 @@ async function claimDelivery(deliveryId, { staleCutoff } = {}) {
 }
 
 async function processWebhookDeliveries(deliveries, { staleCutoff } = {}) {
+    if (deliveries.length === 0) {
+        return;
+    }
+
     // fetch all needed endpoints in one query to prevent N+1 query
     const webhookIds = [...new Set(deliveries.map(d => d.webhook_endpoint_id))];
     const webhooks = await prisma.webhookEndpoint.findMany({

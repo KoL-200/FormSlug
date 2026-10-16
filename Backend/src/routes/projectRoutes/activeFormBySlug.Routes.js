@@ -50,6 +50,14 @@ const submissionRateLimit = require('../../middleware/submissionRateLimit.Middle
  *         $ref: '#/components/responses/BadRequest'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       422:
+ *         description: The submission body is not a plain object or exceeds submission limits.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       429:
  *         $ref: '#/components/responses/RateLimited'
  */

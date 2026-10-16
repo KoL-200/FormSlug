@@ -2,6 +2,10 @@ const { prisma } = require('../../config/database.Config');
 const { getCachedForm, setCachedForm } = require('../../utils/FormCache');
 
 async function activeFormBySlug(slug) {
+    if (process.env.NODE_ENV === 'test') {
+        return prisma.form.findUnique({ where: { slug } });
+    }
+
     const cached = await getCachedForm(slug);
     if (cached) {
         // console.log('cache hit')

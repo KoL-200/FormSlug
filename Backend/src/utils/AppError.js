@@ -13,6 +13,12 @@ class BadRequestError extends AppError {
     }
 }
 
+class UnprocessableEntityError extends AppError {
+    constructor(message = 'Unprocessable Entity') {
+        super(message, 422)
+    }
+}
+
 class UnauthorizedError extends AppError {
     constructor(message = 'Unauthorized') {
         super(message, 401)
@@ -40,6 +46,7 @@ class ConflictError extends AppError {
 module.exports = {
     AppError,
     BadRequestError,
+    UnprocessableEntityError,
     UnauthorizedError,
     ForbiddenError,
     NotFoundError,

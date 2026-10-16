@@ -5,7 +5,34 @@ const { createProjectSchema, updateProjectSchema } = require('../../validators/p
 const validate = require('../../middleware/validate.Middleware');
 const authenticate = require('../../middleware/authenicate.Middleware');
 const ownsProject = require('../../middleware/ownsProject.Middleware');
-const { createProjectController, updateProjectController } = require('../../controllers/projectControllers/project.Controllers');
+const { createProjectController, getProjectByIdController, updateProjectController } = require('../../controllers/projectControllers/project.Controllers');
+
+/**
+ * @swagger
+ * /projects/{projectId}:
+ *   get:
+ *     summary: Get a project
+ *     tags: [Projects]
+ *     parameters:
+ *       - name: projectId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Project details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessProject'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.get('/projects/:projectId', authenticate, ownsProject, getProjectByIdController)
 
 /**
  * @swagger

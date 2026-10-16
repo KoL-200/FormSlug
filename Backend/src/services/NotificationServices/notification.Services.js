@@ -14,6 +14,10 @@ async function createNotificationLog({ submission, type = 'email', status = 'PEN
 }
 
 const sendSubmissionNotification = async ({ submission, form }) => {
+    if (process.env.NODE_ENV === 'test') {
+        return;
+    }
+
     const logEntry = await createNotificationLog({ submission });
 
     try {

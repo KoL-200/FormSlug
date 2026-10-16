@@ -19,6 +19,10 @@ const getProjectsController = async (req, res) => {
     res.status(200).json({ success: true, data: projects });
 };
 
+const getProjectByIdController = async (req, res) => {
+    res.status(200).json({ success: true, data: req.project });
+};
+
 const updateProjectController = async (req, res) => {
     const { projectId } = req.params;
     const { name } = req.body;
@@ -43,6 +47,7 @@ const deleteProjectController = async (req, res) => {
 module.exports = {
     createProjectController,
     getProjectsController,
+    getProjectByIdController,
     updateProjectController,
     deleteProjectController,
 };
