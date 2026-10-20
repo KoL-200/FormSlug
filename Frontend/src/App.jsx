@@ -22,6 +22,11 @@ import {
   UserRound,
 } from 'lucide-react';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/, '');
+const API_DOCS_URL = API_BASE_URL.endsWith('/api/v1')
+  ? `${API_BASE_URL.slice(0, -7)}/api/docs`
+  : `${API_BASE_URL}/docs`;
+
 function BrandMark({ light = false }) {
   return (
     <a className={`brand${light ? ' brand-light' : ''}`} href="/" aria-label="FormSlug home">
@@ -33,7 +38,7 @@ function BrandMark({ light = false }) {
   );
 }
 
-function Field({ id, label, type = 'text', value, onChange, placeholder, icon: Icon, autoComplete, trailing }) {
+function Field({ id, label, type = 'text', value, onChange, placeholder, icon: Icon, autoComplete, trailing, disabled }) {
   return (
     <label className="field" htmlFor={id}>
       <span className="field-label">{label}</span>
@@ -47,6 +52,7 @@ function Field({ id, label, type = 'text', value, onChange, placeholder, icon: I
           onChange={onChange}
           placeholder={placeholder}
           autoComplete={autoComplete}
+          disabled={disabled}
           required
         />
         {trailing}
@@ -266,6 +272,7 @@ export default function App() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const isRegister = mode === 'register';
 
@@ -280,7 +287,7 @@ export default function App() {
     setNotice('');
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setError('');
     setNotice('');
@@ -290,7 +297,54 @@ export default function App() {
       return;
     }
 
-    setNotice(`${isRegister ? 'Sign-up' : 'Login'} is not connected yet. No request was sent.`);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/${isRegister ? 'register' : 'login'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isRegister
+          ? { name: name.trim(), email, password }
+          : { email, password }),
+      });
+
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error('The server returned an invalid response. Please try again.');
+      }
+
+      if (!response.ok) {
+        const validationErrors = Array.isArray(result.details)
+          ? result.details
+            .map((detail) => detail?.field
+              ? `${detail.field}: ${detail.message}`
+              : detail?.message)
+            .filter(Boolean)
+            .join(' ')
+          : '';
+        throw new Error(validationErrors || result.error || 'Authentication failed. Please try again.');
+      }
+
+      if (isRegister) {
+        setMode('login');
+        setPassword('');
+        setNotice('Account created. Sign in with your new credentials.');
+        return;
+      }
+
+      if (!result.data?.accessToken || !result.data?.user) {
+        throw new Error('The server returned an invalid sign-in response. Please try again.');
+      }
+
+      setNotice(`Signed in successfully. Welcome${result.data.user.name ? `, ${result.data.user.name}` : ''}.`);
+    } catch (requestError) {
+      setError(requestError instanceof TypeError
+        ? 'Unable to reach the authentication service. Check your connection and try again.'
+        : requestError.message || 'Authentication failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -331,6 +385,7 @@ export default function App() {
                   className={`auth-tab${isRegister ? ' active' : ''}`}
                   aria-pressed={isRegister}
                   onClick={() => changeMode('register')}
+                  disabled={isLoading}
                   type="button"
                 >
                   Create account
@@ -339,6 +394,7 @@ export default function App() {
                   className={`auth-tab${!isRegister ? ' active' : ''}`}
                   aria-pressed={!isRegister}
                   onClick={() => changeMode('login')}
+                  disabled={isLoading}
                   type="button"
                 >
                   Sign in
@@ -358,6 +414,7 @@ export default function App() {
                     placeholder="e.g. Jamie Parker"
                     icon={UserRound}
                     autoComplete="name"
+                    disabled={isLoading}
                   />
                 )}
                 <Field
@@ -369,6 +426,7 @@ export default function App() {
                   placeholder="you@example.com"
                   icon={Mail}
                   autoComplete="email"
+                  disabled={isLoading}
                 />
                 <Field
                   id="password"
@@ -379,11 +437,13 @@ export default function App() {
                   placeholder="At least 8 characters"
                   icon={LockKeyhole}
                   autoComplete={isRegister ? 'new-password' : 'current-password'}
+                  disabled={isLoading}
                   trailing={
                     <button
                       className="password-toggle"
                       type="button"
                       onClick={() => setShowPassword((visible) => !visible)}
+                      disabled={isLoading}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
@@ -401,9 +461,13 @@ export default function App() {
                     By creating an account, you agree to use FormSlug responsibly and keep your sign-in details secure.
                   </p>
                 )}
-                <button className="submit-button" type="submit">
-                  <span>{isRegister ? 'Create your account' : 'Sign in'}</span>
-                  <ArrowRight size={17} strokeWidth={2.2} />
+                <button className="submit-button" type="submit" disabled={isLoading}>
+                  <span>{isLoading
+                    ? (isRegister ? 'Creating account...' : 'Signing in...')
+                    : (isRegister ? 'Create your account' : 'Sign in')}</span>
+                  {isLoading
+                    ? <span className="button-spinner" aria-hidden="true" />
+                    : <ArrowRight size={17} strokeWidth={2.2} />}
                 </button>
               </form>
 
@@ -411,13 +475,13 @@ export default function App() {
                 <span className="bottom-rule" />
                 <p>
                   {isRegister ? 'Already have an account?' : 'New to FormSlug?'}
-                  <button type="button" onClick={() => changeMode(isRegister ? 'login' : 'register')}>
+                  <button type="button" disabled={isLoading} onClick={() => changeMode(isRegister ? 'login' : 'register')}>
                     {isRegister ? ' Sign in' : ' Create an account'}
                   </button>
                 </p>
                 <span className="bottom-rule" />
               </div>
-              <button className="preview-link" type="button" onClick={() => setPage('dashboard')}>
+              <button className="preview-link" type="button" disabled={isLoading} onClick={() => setPage('dashboard')}>
                 Preview the workspace <ArrowRight size={14} />
               </button>
               <div className="privacy-note"><LockKeyhole size={13} /> Your information is encrypted and kept private.</div>
@@ -427,7 +491,7 @@ export default function App() {
           <span>© {new Date().getFullYear()} FormSlug</span>
           <span className="footer-divider" />
           <span>Built for better conversations</span>
-          <a href="http://localhost:3000/api/docs" target="_blank" rel="noreferrer" aria-label="Open API documentation">
+          <a href={API_DOCS_URL} target="_blank" rel="noreferrer" aria-label="Open API documentation">
             API docs <MoveUpRight size={13} />
           </a>
         </footer>
