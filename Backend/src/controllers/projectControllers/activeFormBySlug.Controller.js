@@ -2,8 +2,6 @@ const { activeFormBySlug } = require('../../services/projectServices/activeFormS
 const { validateSubmissionEnvelope } = require('../../utils/validateSubmissionEnvelope');
 const { sendSubmissionNotification } = require('../../services/NotificationServices/notification.Services')
 const { processWebhookDeliveries } = require('../../services/webhookServices/webhookDelivery.Services')
-const { perFormRateLimit, perIpRateLimit } = require('../../lib/rateLimiter');
-const { writeAuditLog } = require('../../utils/auditLog');
 const logger = require('../../config/logger');
 
 const { prisma } = require('../../config/database.Config');
@@ -32,30 +30,6 @@ const activeFormBySlugController = async (req, res) => {
         if (providedKey !== form.api_key) {
             return res.status(403).json({ error: 'Invalid API key' });
         }
-    }
-
-    const ipKey = req.ip;
-    const formKey = form.id;
-
-    const [ipResult, formResult] = process.env.NODE_ENV === 'test'
-        ? [{ success: true }, { success: true }]
-        : await Promise.all([
-            perIpRateLimit.limit(ipKey),
-            perFormRateLimit.limit(formKey),
-        ]);
-
-    if (!ipResult.success || !formResult.success) {
-        await writeAuditLog({
-            userId: null,
-            action: 'rate_limit.triggered',
-            metadata: {
-                formId: form.id,
-                ipAddress: req.ip,
-                limitType: !ipResult.success ? 'ip' : 'form',
-            },
-            ipAddress: req.ip,
-        });
-        return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
 
     if (req.body[HONEYPOT_FIELD]) {

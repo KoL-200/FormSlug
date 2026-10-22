@@ -10,7 +10,7 @@ async function getUserEmail(userId) {
     });
 }
 
-const createForm = async ({ projectId, userId, name, notificationEmail }) => {
+const createForm = async ({ projectId, userId, name, notificationEmail, config = {} }) => {
     let resolvedNotificationEmail = notificationEmail;
 
     if (!resolvedNotificationEmail) {
@@ -27,7 +27,7 @@ const createForm = async ({ projectId, userId, name, notificationEmail }) => {
             name,
             slug,
             api_key: apiKey,
-            config: {},
+            config,
             notification_email: resolvedNotificationEmail,
         },
     });

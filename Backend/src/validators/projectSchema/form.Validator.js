@@ -4,6 +4,7 @@ const createFormSchema = z.object(
     {
         name: z.string().min(1, 'Name is required'),
         notification_email: z.string().email({ pattern: z.regexes.rfc5322Email, message: 'Enter a valid email address' }).optional(),
+        config: z.record(z.string(), z.unknown()).optional(),
     }
 )
 

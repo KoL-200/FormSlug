@@ -170,6 +170,7 @@ const options = {
                     properties: {
                         name: { type: 'string', minLength: 1 },
                         notification_email: { type: 'string', format: 'email' },
+                        config: { type: 'object', additionalProperties: true },
                     },
                 },
                 UpdateFormRequest: {
