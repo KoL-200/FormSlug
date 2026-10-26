@@ -27,6 +27,8 @@ After registration, the form switches to sign-in. Successful sign-in shows a con
 
 The workspace dashboard is accessible from the sign-up/login screen using “Preview the workspace.” It displays sample data and keeps interactions in the browser only.
 
+The form builder’s live preview accepts answers and validates required questions. Submitting it displays a local confirmation only; preview responses are not sent to the backend or saved.
+
 ## Scripts
 
 ```bash

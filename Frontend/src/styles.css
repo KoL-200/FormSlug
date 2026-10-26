@@ -837,6 +837,7 @@ input:focus-visible {
 .builder-preview-note { margin-bottom: 18px; padding: 11px 13px; border: 1px solid #dce9cf; border-radius: 8px; background: #f3f8ed; color: #557345; font-size: 11px; }
 .builder-layout { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(310px, .92fr); align-items: start; gap: 24px; }
 .builder-editor { display: grid; gap: 15px; min-width: 0; }
+.builder-editor > form { display: grid; gap: 15px; }
 .builder-card,
 .builder-field-card { padding: 21px; border: 1px solid #e7ebe5; border-radius: 11px; background: #fff; box-shadow: 0 4px 16px rgb(30 50 35 / 3%); }
 .builder-label { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; color: #47564b; font-size: 10px; font-weight: 700; }
@@ -895,6 +896,10 @@ input:focus-visible {
 .builder-preview-question input::placeholder,
 .builder-preview-question textarea::placeholder { color: #a4aca5; }
 .builder-preview-submit { display: flex; width: 100%; align-items: center; justify-content: space-between; margin-top: 21px; padding: 10px 12px; border: 0; border-radius: 6px; background: #23372a; color: #fff; font-size: 10px; font-weight: 600; }
+.builder-preview-submit { cursor: pointer; }
+.builder-preview-submit:hover { background: #314b37; }
+.builder-preview-success h2 { margin: 11px 0 7px; color: #26382b; font-family: 'Manrope', sans-serif; font-size: 21px; letter-spacing: -.6px; }
+.builder-preview-success p { margin: 0; color: #859087; font-size: 10px; line-height: 1.6; }
 .builder-preview-foot { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 14px; color: #9aa39b; font-size: 8px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
 

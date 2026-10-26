@@ -9,11 +9,11 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: env.VITE_BACKEND_URL || 'http://localhost:5000',
+          target: env.VITE_BACKEND_URL || 'http://localhost:3000',
           changeOrigin: true,
         },
         '/f': {
-          target: env.VITE_BACKEND_URL || 'http://localhost:5000',
+          target: env.VITE_BACKEND_URL || 'http://localhost:3000',
           changeOrigin: true,
         },
       },

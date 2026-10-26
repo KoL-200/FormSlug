@@ -205,8 +205,14 @@ function FormBuilder({ onBack, onSaved, accessToken, project, isPreview = false 
   const [fields, setFields] = useState([
     { id: 1, label: 'Your name', type: 'text', placeholder: 'Enter your answer', required: true },
   ]);
+  const [previewResponses, setPreviewResponses] = useState({});
+  const [previewSubmitted, setPreviewSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setPreviewSubmitted(false);
+  }, [title, description, fields]);
 
   function updateField(id, updates) {
     setFields((currentFields) => currentFields.map((field) => (
@@ -321,8 +327,9 @@ function FormBuilder({ onBack, onSaved, accessToken, project, isPreview = false 
         )}
         {error && <div className="dashboard-notice dashboard-error" role="alert">{error}</div>}
 
-        <form id="form-builder" className="builder-layout" onSubmit={saveForm}>
+        <div className="builder-layout">
           <section className="builder-editor" aria-label="Edit form">
+            <form id="form-builder" className="builder-editor-form" onSubmit={saveForm}>
             <div className="builder-card">
               <label className="builder-label" htmlFor="builder-title">Form title</label>
               <input
@@ -425,6 +432,7 @@ function FormBuilder({ onBack, onSaved, accessToken, project, isPreview = false 
             <button className="builder-add-field" type="button" onClick={addField}>
               <Plus size={16} /> Add a question
             </button>
+            </form>
           </section>
 
           <aside className="builder-preview" aria-label="Form preview">
@@ -432,25 +440,72 @@ function FormBuilder({ onBack, onSaved, accessToken, project, isPreview = false 
             <div className="builder-preview-canvas">
               <div className="builder-preview-brand"><span><Shapes size={14} /></span> formslug</div>
               <div className="builder-preview-form">
-                <span className="builder-preview-eyebrow">NEW RESPONSE</span>
-                <h2>{title.trim() || 'Untitled form'}</h2>
-                {description && <p className="builder-preview-description">{description}</p>}
-                {fields.map((field, index) => (
-                  <label className="builder-preview-question" key={field.id}>
-                    <span>{field.label.trim() || `Question ${index + 1}`}{field.required && <i>*</i>}</span>
-                    {field.type === 'textarea'
-                      ? <textarea placeholder={field.placeholder || 'Your answer'} rows={3} disabled />
-                      : <input type={field.type} placeholder={field.placeholder || 'Your answer'} disabled />}
-                  </label>
-                ))}
-                <button className="builder-preview-submit" type="button" disabled>
-                  Send response <ArrowRight size={14} />
-                </button>
-                <small className="builder-preview-foot"><LockKeyhole size={11} /> Your response is kept private.</small>
+                {previewSubmitted ? (
+                  <div className="builder-preview-success" role="status">
+                    <span className="builder-preview-eyebrow">RESPONSE COMPLETE</span>
+                    <h2>Thanks for your response!</h2>
+                    <p>Your test response was submitted in this preview only.</p>
+                    <button
+                      className="builder-preview-submit"
+                      type="button"
+                      onClick={() => {
+                        setPreviewResponses({});
+                        setPreviewSubmitted(false);
+                      }}
+                    >
+                      Send another response <ArrowRight size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      setPreviewSubmitted(true);
+                    }}
+                  >
+                    <span className="builder-preview-eyebrow">NEW RESPONSE</span>
+                    <h2>{title.trim() || 'Untitled form'}</h2>
+                    {description && <p className="builder-preview-description">{description}</p>}
+                    {fields.map((field, index) => (
+                      <label className="builder-preview-question" key={field.id}>
+                        <span>{field.label.trim() || `Question ${index + 1}`}{field.required && <i>*</i>}</span>
+                        {field.type === 'textarea'
+                          ? (
+                            <textarea
+                              placeholder={field.placeholder || 'Your answer'}
+                              rows={3}
+                              required={field.required}
+                              value={previewResponses[field.id] || ''}
+                              onChange={(event) => {
+                                setPreviewResponses((current) => ({ ...current, [field.id]: event.target.value }));
+                                setPreviewSubmitted(false);
+                              }}
+                            />
+                          )
+                          : (
+                            <input
+                              type={field.type}
+                              placeholder={field.placeholder || 'Your answer'}
+                              required={field.required}
+                              value={previewResponses[field.id] || ''}
+                              onChange={(event) => {
+                                setPreviewResponses((current) => ({ ...current, [field.id]: event.target.value }));
+                                setPreviewSubmitted(false);
+                              }}
+                            />
+                          )}
+                      </label>
+                    ))}
+                    <button className="builder-preview-submit" type="submit">
+                      Send response <ArrowRight size={14} />
+                    </button>
+                    <small className="builder-preview-foot"><LockKeyhole size={11} /> Test responses stay in this preview.</small>
+                  </form>
+                )}
               </div>
             </div>
           </aside>
-        </form>
+        </div>
       </div>
     </main>
   );
