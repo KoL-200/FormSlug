@@ -2,11 +2,16 @@ const express = require('express');
 const router = express.Router();
 
 const validate = require('../../middleware/validate.Middleware');
-const authenticate = require('../../middleware/authenicate.Middleware')
-const ownsProject = require('../../middleware/ownsProject.Middleware')
+const authenticate = require('../../middleware/authenicate.Middleware');
+const ownsProject = require('../../middleware/ownsProject.Middleware');
 const { createWebhookSchema, updateWebhookSchema } = require('../../validators/WebhookSchema/webhookSchema.Validator');
-
-const { listWebhooksController, createWebhookController, updateWebhookController, deleteWebhookController, testWebhookController } = require('../../controllers/webhookControllers/webhook.Controllers')
+const {
+    listWebhooksController,
+    createWebhookController,
+    updateWebhookController,
+    deleteWebhookController,
+    testWebhookController,
+} = require('../../controllers/webhookControllers/webhook.Controllers');
 
 /**
  * @swagger
@@ -24,43 +29,48 @@ const { listWebhooksController, createWebhookController, updateWebhookController
  *           format: uuid
  *     responses:
  *       200:
- *          description: Webhook endpoints ordered newest first
- content:
-   application/json:
-     schema:
-       type: object
-       properties:
-         success:
-           type: boolean
-         data:
-           type: array
-           items:
-             type: object
-             properties:
-               id:
-                 type: string
-                 format: uuid
-               project_id:
-                 type: string
-                 format: uuid
-               url:
-                 type: string
-                 format: uri
-               events:
-                 type: array
-                 items:
-                   type: string
-               is_active:
-                 type: boolean
-               created_at:
-                 type: string
-                 format: date-time
+ *         description: Webhook endpoints ordered newest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       project_id:
+ *                         type: string
+ *                         format: uuid
+ *                       url:
+ *                         type: string
+ *                         format: uri
+ *                       events:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       is_active:
+ *                         type: boolean
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.get('/projects/:projectId/webhooks', authenticate, ownsProject, listWebhooksController);
+router.get(
+    '/projects/:projectId/webhooks',
+    authenticate,
+    ownsProject,
+    listWebhooksController,
+);
 
 /**
  * @swagger
@@ -96,7 +106,13 @@ router.get('/projects/:projectId/webhooks', authenticate, ownsProject, listWebho
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.post('/projects/:projectId/webhooks', authenticate, ownsProject, validate(createWebhookSchema), createWebhookController);
+router.post(
+    '/projects/:projectId/webhooks',
+    authenticate,
+    ownsProject,
+    validate(createWebhookSchema),
+    createWebhookController,
+);
 
 /**
  * @swagger
@@ -140,7 +156,13 @@ router.post('/projects/:projectId/webhooks', authenticate, ownsProject, validate
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.patch('/projects/:projectId/webhooks/:id', authenticate, ownsProject, validate(updateWebhookSchema), updateWebhookController);
+router.patch(
+    '/projects/:projectId/webhooks/:id',
+    authenticate,
+    ownsProject,
+    validate(updateWebhookSchema),
+    updateWebhookController,
+);
 
 /**
  * @swagger
@@ -175,7 +197,12 @@ router.patch('/projects/:projectId/webhooks/:id', authenticate, ownsProject, val
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.delete('/projects/:projectId/webhooks/:id', authenticate, ownsProject, deleteWebhookController);
+router.delete(
+    '/projects/:projectId/webhooks/:id',
+    authenticate,
+    ownsProject,
+    deleteWebhookController,
+);
 
 /**
  * @swagger
@@ -210,6 +237,11 @@ router.delete('/projects/:projectId/webhooks/:id', authenticate, ownsProject, de
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.post('/projects/:projectId/webhooks/:id/test', authenticate, ownsProject, testWebhookController);
+router.post(
+    '/projects/:projectId/webhooks/:id/test',
+    authenticate,
+    ownsProject,
+    testWebhookController,
+);
 
 module.exports = router;
