@@ -6,8 +6,61 @@ const authenticate = require('../../middleware/authenicate.Middleware')
 const ownsProject = require('../../middleware/ownsProject.Middleware')
 const { createWebhookSchema, updateWebhookSchema } = require('../../validators/WebhookSchema/webhookSchema.Validator');
 
-const { createWebhookController, updateWebhookController, deleteWebhookController, testWebhookController } = require('../../controllers/webhookControllers/webhook.Controllers')
+const { listWebhooksController, createWebhookController, updateWebhookController, deleteWebhookController, testWebhookController } = require('../../controllers/webhookControllers/webhook.Controllers')
 
+/**
+ * @swagger
+ * /projects/{projectId}/webhooks:
+ *   get:
+ *     summary: List a project's webhook endpoints
+ *     description: Signing secrets are never included in this response.
+ *     tags: [Webhooks]
+ *     parameters:
+ *       - name: projectId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *          description: Webhook endpoints ordered newest first
+ content:
+   application/json:
+     schema:
+       type: object
+       properties:
+         success:
+           type: boolean
+         data:
+           type: array
+           items:
+             type: object
+             properties:
+               id:
+                 type: string
+                 format: uuid
+               project_id:
+                 type: string
+                 format: uuid
+               url:
+                 type: string
+                 format: uri
+               events:
+                 type: array
+                 items:
+                   type: string
+               is_active:
+                 type: boolean
+               created_at:
+                 type: string
+                 format: date-time
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get('/projects/:projectId/webhooks', authenticate, ownsProject, listWebhooksController);
 
 /**
  * @swagger
