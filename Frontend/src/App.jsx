@@ -16,7 +16,6 @@ import {
   Inbox,
   LockKeyhole,
   LayoutDashboard,
-  LogOut,
   Mail,
   MoveUpRight,
   Pencil,
@@ -27,6 +26,7 @@ import {
   Sparkles,
   Trash2,
   UserRound,
+  Webhook,
 } from 'lucide-react';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/, '');
@@ -191,14 +191,7 @@ function WordmarkIllustration() {
   );
 }
 
-const initialForms = [
-  { id: 1, name: 'Customer feedback', responses: 128, updated: '2 hours ago', status: 'Active', color: 'sage' },
-  { id: 2, name: 'Contact form', responses: 64, updated: 'Yesterday', status: 'Active', color: 'peach' },
-  { id: 3, name: 'Product waitlist', responses: 32, updated: '2 days ago', status: 'Draft', color: 'lavender' },
-];
-
-function FormBuilder({ onBack, onSaved, accessToken, project, isPreview = false }) {
-  const [savedProject, setSavedProject] = useState(project);
+function FormBuilder({ onBack, onSaved, accessToken, project }) {
   const [title, setTitle] = useState('Untitled form');
   const [description, setDescription] = useState('');
   const [notificationEmail, setNotificationEmail] = useState('');
@@ -233,33 +226,15 @@ function FormBuilder({ onBack, onSaved, accessToken, project, isPreview = false 
       return;
     }
 
-    if (isPreview) {
-      onSaved({
-        id: `preview-${Date.now()}`,
-        name: title.trim(),
-        responses: 0,
-        updated: 'Just now',
-        status: 'Draft',
-        color: 'sage',
-      });
+    if (!project?.id) {
+      setError('Select a project before creating a form.');
       return;
     }
 
     setIsSaving(true);
     try {
-      let targetProject = savedProject;
-      if (!targetProject) {
-        const projectResponse = await apiRequest('/projects', accessToken, {
-          method: 'POST',
-          body: JSON.stringify({ name: 'FormSlug Studio' }),
-        });
-        targetProject = projectResponse.data;
-        if (!targetProject?.id) throw new Error('The server returned an invalid project.');
-        setSavedProject(targetProject);
-      }
-
       const formResponse = await apiRequest(
-        `/projects/${encodeURIComponent(targetProject.id)}/forms`,
+        `/projects/${encodeURIComponent(project.id)}/forms`,
         accessToken,
         {
           method: 'POST',
@@ -306,9 +281,9 @@ function FormBuilder({ onBack, onSaved, accessToken, project, isPreview = false 
         <button className="builder-back" type="button" onClick={onBack}>
           <ArrowLeft size={16} /> Back to workspace
         </button>
-        <div className="builder-save-state"><span /> {isPreview ? 'Preview mode' : 'Unsaved changes'}</div>
+        <div className="builder-save-state"><span /> Unsaved changes</div>
         <button className="builder-save-button" type="submit" form="form-builder" disabled={isSaving}>
-          {isSaving ? 'Saving...' : (isPreview ? 'Save preview' : 'Save form')}
+          {isSaving ? 'Saving...' : 'Save form'}
           {!isSaving && <ArrowRight size={15} />}
         </button>
       </header>
@@ -317,14 +292,9 @@ function FormBuilder({ onBack, onSaved, accessToken, project, isPreview = false 
         <div className="builder-heading">
           <div className="dashboard-eyebrow">FORM BUILDER</div>
           <h1>Build your form</h1>
-          <p>Shape the questions and preview what people will see.</p>
+          <p>{project?.name ? `Creating a form in ${project.name}. ` : ''}Shape the questions and preview what people will see.</p>
         </div>
 
-        {isPreview && (
-          <div className="builder-preview-note" role="status">
-            Preview mode: this form is only saved in this browser preview.
-          </div>
-        )}
         {error && <div className="dashboard-notice dashboard-error" role="alert">{error}</div>}
 
         <div className="builder-layout">
@@ -518,7 +488,10 @@ function ResponsesPanel({ forms, accessToken, onNotice, initialFormId }) {
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ total: 0, totalPages: 0 });
   const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingSubmissionId, setLoadingSubmissionId] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -538,6 +511,12 @@ function ResponsesPanel({ forms, accessToken, onNotice, initialFormId }) {
       setMeta({ total: 0, totalPages: 0 });
       return undefined;
     }
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      setSubmissions([]);
+      setMeta({ total: 0, totalPages: 0 });
+      setError('The start date must be on or before the end date.');
+      return undefined;
+    }
 
     const controller = new AbortController();
     async function loadSubmissions() {
@@ -545,8 +524,15 @@ function ResponsesPanel({ forms, accessToken, onNotice, initialFormId }) {
       setError('');
       setSelectedSubmission(null);
       try {
+        const query = new URLSearchParams({
+          page: String(page),
+          limit: '20',
+          includeDeleted: String(includeDeleted),
+        });
+        if (dateFrom) query.set('from', new Date(`${dateFrom}T00:00:00.000Z`).toISOString());
+        if (dateTo) query.set('to', new Date(`${dateTo}T23:59:59.999Z`).toISOString());
         const result = await apiRequest(
-          `/projects/${encodeURIComponent(selectedForm.projectId)}/forms/${encodeURIComponent(selectedForm.id)}/submissions?page=${page}&limit=20&includeDeleted=${includeDeleted}`,
+          `/projects/${encodeURIComponent(selectedForm.projectId)}/forms/${encodeURIComponent(selectedForm.id)}/submissions?${query}`,
           accessToken,
           { signal: controller.signal },
         );
@@ -573,7 +559,29 @@ function ResponsesPanel({ forms, accessToken, onNotice, initialFormId }) {
 
     loadSubmissions();
     return () => controller.abort();
-  }, [accessToken, includeDeleted, page, reloadKey, selectedForm]);
+  }, [accessToken, dateFrom, dateTo, includeDeleted, page, reloadKey, selectedForm]);
+
+  async function toggleSubmissionDetails(submission) {
+    if (selectedSubmission?.id === submission.id) {
+      setSelectedSubmission(null);
+      return;
+    }
+
+    setError('');
+    setLoadingSubmissionId(submission.id);
+    try {
+      const result = await apiRequest(
+        `/projects/${encodeURIComponent(selectedForm.projectId)}/forms/${encodeURIComponent(selectedForm.id)}/submissions/${encodeURIComponent(submission.id)}`,
+        accessToken,
+      );
+      if (!result.data?.id) throw new Error('The server returned an invalid submission.');
+      setSelectedSubmission(result.data);
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to load this response.');
+    } finally {
+      setLoadingSubmissionId('');
+    }
+  }
 
   async function updateSubmission(submission) {
     const action = submission.deleted_at ? 'restore' : 'delete';
@@ -667,6 +675,20 @@ function ResponsesPanel({ forms, accessToken, onNotice, initialFormId }) {
             />
             Include deleted
           </label>
+          <label className="response-date-filter">
+            <span>From</span>
+            <input type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => {
+              setDateFrom(event.target.value);
+              setPage(1);
+            }} />
+          </label>
+          <label className="response-date-filter">
+            <span>To</span>
+            <input type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => {
+              setDateTo(event.target.value);
+              setPage(1);
+            }} />
+          </label>
           <button className="export-button" type="button" onClick={exportSubmissions} disabled={!selectedForm || isExporting}>
             <Download size={15} /> {isExporting ? 'Exporting…' : 'Export CSV'}
           </button>
@@ -688,9 +710,11 @@ function ResponsesPanel({ forms, accessToken, onNotice, initialFormId }) {
               <button
                 className="response-preview"
                 type="button"
-                onClick={() => setSelectedSubmission((current) => current?.id === submission.id ? null : submission)}
+                onClick={() => toggleSubmissionDetails(submission)}
               >
-                {Object.entries(submission.data || {}).slice(0, 2).map(([key, value]) => `${key}: ${String(value)}`).join(' · ') || 'View submission'}
+                {loadingSubmissionId === submission.id
+                  ? 'Loading response…'
+                  : Object.entries(submission.data || {}).slice(0, 2).map(([key, value]) => `${key}: ${String(value)}`).join(' · ') || 'View submission'}
               </button>
               <span className={`form-status ${submission.deleted_at ? 'draft' : 'active'}`}>
                 <i />{submission.deleted_at ? 'Deleted' : 'Received'}
@@ -842,11 +866,692 @@ function AccountSettings({ accessToken, user, onUserUpdated, onLogout }) {
   );
 }
 
-function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, isPreview = false, previewForms = [] }) {
+function ProjectsPanel({ accessToken, projects, onProjectCreated, onProjectUpdated, onProjectDeleted }) {
+  const [projectName, setProjectName] = useState('');
+  const [editingProjectId, setEditingProjectId] = useState('');
+  const [editingName, setEditingName] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState('');
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [loadingProjectId, setLoadingProjectId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  async function createProject(event) {
+    event.preventDefault();
+    const name = projectName.trim();
+    if (!name) return;
+
+    setError('');
+    setNotice('');
+    setIsSaving(true);
+    try {
+      const result = await apiRequest('/projects', accessToken, {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      if (!result.data?.id || !result.data?.name) {
+        throw new Error('The server returned an invalid project.');
+      }
+      onProjectCreated(result.data);
+      setProjectName('');
+      setNotice('Project created.');
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to create the project.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function updateProject(project) {
+    const name = editingName.trim();
+    if (!name) {
+      setError('Enter a project name before saving.');
+      return;
+    }
+    if (name === project.name) {
+      setEditingProjectId('');
+      setError('');
+      return;
+    }
+
+    setError('');
+    setNotice('');
+    setIsSaving(true);
+    try {
+      const result = await apiRequest(`/projects/${encodeURIComponent(project.id)}`, accessToken, {
+        method: 'PATCH',
+        body: JSON.stringify({ name }),
+      });
+      if (!result.data?.id) {
+        throw new Error('The server returned an invalid project.');
+      }
+      const updatedProject = { ...project, ...result.data, name: result.data.name || name };
+      onProjectUpdated(updatedProject);
+      setSelectedProject((current) => current?.id === project.id ? updatedProject : current);
+      setEditingProjectId('');
+      setNotice('Project updated.');
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to update the project.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function viewProject(project) {
+    setError('');
+    setNotice('');
+    setSelectedProject(null);
+    setLoadingProjectId(project.id);
+    try {
+      const result = await apiRequest(`/projects/${encodeURIComponent(project.id)}`, accessToken);
+      if (!result.data?.id || !result.data?.name) {
+        throw new Error('The server returned an invalid project.');
+      }
+      setSelectedProject(result.data);
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to load the project.');
+    } finally {
+      setLoadingProjectId('');
+    }
+  }
+
+  async function deleteProject(project) {
+    setError('');
+    setNotice('');
+    setIsSaving(true);
+    try {
+      await apiRequest(`/projects/${encodeURIComponent(project.id)}`, accessToken, { method: 'DELETE' });
+      onProjectDeleted(project.id);
+      setConfirmDeleteId('');
+      setSelectedProject(null);
+      setNotice(`${project.name} was deleted.`);
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to delete the project.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <section className="projects-panel" aria-label="Projects">
+      <div className="settings-heading">
+        <div>
+          <h2>Projects</h2>
+          <p>Create projects and manage their details.</p>
+        </div>
+      </div>
+      {error && <div className="dashboard-notice dashboard-error" role="alert">{error}</div>}
+      {notice && <div className="dashboard-notice" role="status">{notice}</div>}
+      <form className="project-create-card" onSubmit={createProject}>
+        <label className="settings-field" htmlFor="new-project-name">
+          <span>Project name</span>
+          <input
+            id="new-project-name"
+            value={projectName}
+            onChange={(event) => setProjectName(event.target.value)}
+            maxLength={120}
+            placeholder="e.g. Customer research"
+            required
+            disabled={isSaving}
+          />
+        </label>
+        <button className="settings-submit" type="submit" disabled={isSaving || !projectName.trim()}>
+          <Plus size={14} /> {isSaving ? 'Creating…' : 'Create project'}
+        </button>
+      </form>
+
+      <div className="project-list">
+        {projects.map((project) => (
+          <article className="project-card" key={project.id}>
+            {editingProjectId === project.id ? (
+              <form
+                className="project-rename-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  updateProject(project);
+                }}
+              >
+                <label className="settings-field" htmlFor={`project-name-${project.id}`}>
+                  <span>Project name</span>
+                  <input
+                    id={`project-name-${project.id}`}
+                    value={editingName}
+                    onChange={(event) => setEditingName(event.target.value)}
+                    maxLength={120}
+                    required
+                    autoFocus
+                    disabled={isSaving}
+                  />
+                </label>
+                <div className="project-actions">
+                  <button className="settings-submit" type="submit" disabled={isSaving}>
+                    {isSaving ? 'Saving…' : 'Save project'}
+                  </button>
+                  <button
+                    className="settings-cancel"
+                    type="button"
+                    onClick={() => setEditingProjectId('')}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div className="project-card-heading">
+                  <span className="project-card-icon"><Shapes size={17} /></span>
+                  <div>
+                    <h3>{project.name}</h3>
+                    <p>Project ID: {project.id}</p>
+                  </div>
+                </div>
+                <div className="project-actions">
+                  <button
+                    className="settings-cancel"
+                    type="button"
+                    onClick={() => viewProject(project)}
+                    disabled={Boolean(loadingProjectId)}
+                  >
+                    <Eye size={14} /> {loadingProjectId === project.id ? 'Loading…' : 'View project'}
+                  </button>
+                  <button
+                    className="settings-cancel"
+                    type="button"
+                    onClick={() => {
+                      setError('');
+                      setEditingName(project.name);
+                      setEditingProjectId(project.id);
+                    }}
+                  >
+                    <Pencil size={14} /> Edit name
+                  </button>
+                  {confirmDeleteId === project.id ? (
+                    <>
+                      <button
+                        className="settings-delete"
+                        type="button"
+                        onClick={() => deleteProject(project)}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? 'Deleting…' : 'Confirm delete'}
+                      </button>
+                      <button
+                        className="settings-cancel"
+                        type="button"
+                        onClick={() => setConfirmDeleteId('')}
+                        disabled={isSaving}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="settings-delete"
+                      type="button"
+                      onClick={() => setConfirmDeleteId(project.id)}
+                    >
+                      <Trash2 size={14} /> Delete project
+                    </button>
+                  )}
+                </div>
+                {selectedProject?.id === project.id && (
+                  <dl className="project-details">
+                    <div><dt>Name</dt><dd>{selectedProject.name}</dd></div>
+                    <div><dt>Project ID</dt><dd>{selectedProject.id}</dd></div>
+                    {selectedProject.created_at && (
+                      <div>
+                        <dt>Created</dt>
+                        <dd>{new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(selectedProject.created_at))}</dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
+              </>
+            )}
+          </article>
+        ))}
+        {projects.length === 0 && <div className="empty-forms">No projects yet. Create your first project above.</div>}
+      </div>
+    </section>
+  );
+}
+
+function FormDetailsPanel({ accessToken, form, onRotated }) {
+  const [details, setDetails] = useState(null);
+  const [apiKey, setApiKey] = useState('');
+  const [submissionPayload, setSubmissionPayload] = useState('{\n  "message": "Test submission"\n}');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRotating, setIsRotating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmRotation, setConfirmRotation] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadDetails() {
+      try {
+        const result = await apiRequest(
+          `/projects/${encodeURIComponent(form.projectId)}/forms/${encodeURIComponent(form.id)}`,
+          accessToken,
+          { signal: controller.signal },
+        );
+        if (!result.data?.id) throw new Error('The server returned an invalid form.');
+        if (!controller.signal.aborted) setDetails(result.data);
+      } catch (requestError) {
+        if (!controller.signal.aborted) {
+          setError(requestError.message || 'Unable to load form details.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false);
+      }
+    }
+
+    loadDetails();
+    return () => controller.abort();
+  }, [accessToken, form.id, form.projectId]);
+
+  async function rotateApiKey() {
+    setError('');
+    setNotice('');
+    setIsRotating(true);
+    try {
+      const result = await apiRequest(
+        `/projects/${encodeURIComponent(form.projectId)}/forms/${encodeURIComponent(form.id)}/rotate-key`,
+        accessToken,
+        { method: 'POST' },
+      );
+      if (!result.data?.api_key) throw new Error('The server returned an invalid API key.');
+      setApiKey(result.data.api_key);
+      setConfirmRotation(false);
+      setNotice('API key rotated. Copy and store this key now; it will not be shown again.');
+      onRotated();
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to rotate the form API key.');
+    } finally {
+      setIsRotating(false);
+    }
+  }
+
+  async function submitTest(event) {
+    event.preventDefault();
+    setError('');
+    setNotice('');
+    let payload;
+    try {
+      payload = JSON.parse(submissionPayload);
+    } catch {
+      setError('Enter a valid JSON object for the test submission.');
+      return;
+    }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      setError('The test submission must be a JSON object.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(getPublicFormUrl(form.slug), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      let result = {};
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error('The public endpoint returned an invalid response.');
+      }
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Unable to send the test submission.');
+      }
+      setNotice('Test submission accepted by the public endpoint.');
+    } catch (requestError) {
+      setError(requestError instanceof TypeError
+        ? 'Unable to reach the public submission endpoint.'
+        : requestError.message || 'Unable to send the test submission.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <section className="form-details-panel" aria-label={`${form.name} details`}>
+      {isLoading && <div className="empty-forms">Loading form details…</div>}
+      {error && <div className="dashboard-notice dashboard-error" role="alert">{error}</div>}
+      {notice && <div className="dashboard-notice" role="status">{notice}</div>}
+      {details && (
+        <>
+          <dl className="project-details">
+            <div><dt>Form ID</dt><dd>{details.id}</dd></div>
+            <div><dt>Project ID</dt><dd>{form.projectId}</dd></div>
+            <div><dt>Public slug</dt><dd>{details.slug || form.slug || 'Unavailable'}</dd></div>
+            <div><dt>Status</dt><dd>{details.is_active ? 'Active' : 'Draft'}</dd></div>
+            {details.notification_email && <div><dt>Notifications</dt><dd>{details.notification_email}</dd></div>}
+            {details.config && <div><dt>Configuration</dt><dd><pre>{JSON.stringify(details.config, null, 2)}</pre></dd></div>}
+          </dl>
+          <div className="form-detail-key">
+            <div>
+              <strong>Submission API key</strong>
+              <p>Rotate this key if it has been exposed. Existing integrations must then use the new key.</p>
+            </div>
+            {confirmRotation ? (
+              <div className="project-actions">
+                <button className="settings-delete" type="button" onClick={rotateApiKey} disabled={isRotating}>
+                  {isRotating ? 'Rotating…' : 'Confirm key rotation'}
+                </button>
+                <button className="settings-cancel" type="button" onClick={() => setConfirmRotation(false)} disabled={isRotating}>Cancel</button>
+              </div>
+            ) : (
+              <button className="settings-cancel" type="button" onClick={() => {
+                setApiKey('');
+                setConfirmRotation(true);
+              }}>
+                Rotate API key
+              </button>
+            )}
+            {apiKey && (
+              <label className="settings-field">
+                <span>New API key — copy it now</span>
+                <input value={apiKey} readOnly onFocus={(event) => event.target.select()} />
+              </label>
+            )}
+          </div>
+          {details.slug && (
+            <form className="public-test-form" onSubmit={submitTest}>
+              <div>
+                <strong>Test public submission</strong>
+                <p>Posts this JSON to the public endpoint. The form must be active to accept submissions.</p>
+              </div>
+              <label className="settings-field" htmlFor={`public-test-${form.id}`}>
+                <span>JSON payload</span>
+                <textarea
+                  id={`public-test-${form.id}`}
+                  value={submissionPayload}
+                  onChange={(event) => setSubmissionPayload(event.target.value)}
+                  rows={5}
+                  disabled={isSubmitting}
+                />
+              </label>
+              <button className="settings-submit" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Sending…' : 'Send test submission'}
+              </button>
+            </form>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function WebhooksPanel({ accessToken, projects }) {
+  const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id || '');
+  const [webhooks, setWebhooks] = useState([]);
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [editingWebhookId, setEditingWebhookId] = useState('');
+  const [editingUrl, setEditingUrl] = useState('');
+  const [confirmDeleteWebhookId, setConfirmDeleteWebhookId] = useState('');
+  const [newSecret, setNewSecret] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    if (!projects.some((project) => project.id === selectedProjectId)) {
+      setSelectedProjectId(projects[0]?.id || '');
+    }
+  }, [projects, selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setWebhooks([]);
+      return undefined;
+    }
+    const controller = new AbortController();
+    async function loadWebhooks() {
+      setIsLoading(true);
+      setError('');
+      setNewSecret('');
+      try {
+        const result = await apiRequest(
+          `/projects/${encodeURIComponent(selectedProjectId)}/webhooks`,
+          accessToken,
+          { signal: controller.signal },
+        );
+        if (!Array.isArray(result.data)) throw new Error('The server returned an invalid webhook list.');
+        if (!controller.signal.aborted) setWebhooks(result.data);
+      } catch (requestError) {
+        if (!controller.signal.aborted) setError(requestError.message || 'Unable to load webhooks.');
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false);
+      }
+    }
+    loadWebhooks();
+    return () => controller.abort();
+  }, [accessToken, selectedProjectId]);
+
+  async function createWebhook(event) {
+    event.preventDefault();
+    setError('');
+    setNotice('');
+    setNewSecret('');
+    setIsSaving(true);
+    try {
+      const result = await apiRequest(
+        `/projects/${encodeURIComponent(selectedProjectId)}/webhooks`,
+        accessToken,
+        { method: 'POST', body: JSON.stringify({ url: webhookUrl.trim() }) },
+      );
+      if (!result.data?.id || !result.data?.secret) {
+        throw new Error('The server returned an invalid webhook response.');
+      }
+      const webhook = { ...result.data };
+      delete webhook.secret;
+      setWebhooks((current) => [webhook, ...current]);
+      setNewSecret(result.data.secret);
+      setWebhookUrl('');
+      setNotice('Webhook created. Copy and store the signing secret now; it will not be shown again.');
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to create the webhook.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function updateWebhook(webhook, updates) {
+    setError('');
+    setNotice('');
+    setIsSaving(true);
+    try {
+      const result = await apiRequest(
+        `/projects/${encodeURIComponent(selectedProjectId)}/webhooks/${encodeURIComponent(webhook.id)}`,
+        accessToken,
+        { method: 'PATCH', body: JSON.stringify(updates) },
+      );
+      if (!result.data?.id) throw new Error('The server returned an invalid webhook response.');
+      setWebhooks((current) => current.map((item) => item.id === webhook.id ? result.data : item));
+      setEditingWebhookId('');
+      setNotice('Webhook updated.');
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to update the webhook.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function deleteWebhook(webhook) {
+    setError('');
+    setNotice('');
+    setIsSaving(true);
+    try {
+      await apiRequest(
+        `/projects/${encodeURIComponent(selectedProjectId)}/webhooks/${encodeURIComponent(webhook.id)}`,
+        accessToken,
+        { method: 'DELETE' },
+      );
+      setWebhooks((current) => current.filter((item) => item.id !== webhook.id));
+      setConfirmDeleteWebhookId('');
+      setNotice('Webhook deleted.');
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to delete the webhook.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function testWebhook(webhook) {
+    setError('');
+    setNotice('');
+    setIsSaving(true);
+    try {
+      const result = await apiRequest(
+        `/projects/${encodeURIComponent(selectedProjectId)}/webhooks/${encodeURIComponent(webhook.id)}/test`,
+        accessToken,
+        { method: 'POST' },
+      );
+      if (!result.data || typeof result.data.delivered !== 'boolean') {
+        throw new Error('The server returned an invalid test-delivery response.');
+      }
+      setNotice(result.data.delivered
+        ? `Test delivered (HTTP ${result.data.statusCode}).`
+        : `Test delivery failed${result.data.error ? `: ${result.data.error}` : '.'}`);
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to test the webhook.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <section className="webhooks-panel" aria-label="Project webhooks">
+      <div className="settings-heading">
+        <div><h2>Webhooks</h2><p>Send submission events to your HTTPS endpoints.</p></div>
+        <label className="settings-field">
+          <span>Project</span>
+          <select
+            aria-label="Webhook project"
+            value={selectedProjectId}
+            onChange={(event) => setSelectedProjectId(event.target.value)}
+            disabled={!projects.length}
+          >
+            {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+          </select>
+        </label>
+      </div>
+      {error && <div className="dashboard-notice dashboard-error" role="alert">{error}</div>}
+      {notice && <div className="dashboard-notice" role="status">{notice}</div>}
+      {newSecret && (
+        <label className="settings-field webhook-secret">
+          <span>Signing secret — copy it now</span>
+          <input value={newSecret} readOnly onFocus={(event) => event.target.select()} />
+        </label>
+      )}
+      {!projects.length ? (
+        <div className="empty-forms">Create a project before configuring webhooks.</div>
+      ) : (
+        <>
+          <form className="webhook-create-card" onSubmit={createWebhook}>
+            <label className="settings-field" htmlFor="new-webhook-url">
+              <span>HTTPS endpoint URL</span>
+              <input
+                id="new-webhook-url"
+                type="url"
+                value={webhookUrl}
+                onChange={(event) => setWebhookUrl(event.target.value)}
+                placeholder="https://example.com/webhooks"
+                pattern="https://.*"
+                title="Webhook URLs must use HTTPS."
+                required
+                disabled={isSaving}
+              />
+            </label>
+            <button className="settings-submit" type="submit" disabled={isSaving || !selectedProjectId}>
+              {isSaving ? 'Creating…' : 'Add webhook'}
+            </button>
+          </form>
+          <div className="webhook-list">
+            {isLoading && <div className="empty-forms">Loading webhooks…</div>}
+            {!isLoading && webhooks.map((webhook) => (
+              <article className="webhook-card" key={webhook.id}>
+                <div className="webhook-card-heading">
+                  <span className={`form-status ${webhook.is_active ? 'active' : 'draft'}`}><i />{webhook.is_active ? 'Active' : 'Paused'}</span>
+                  {editingWebhookId === webhook.id ? (
+                    <form
+                      className="webhook-edit-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        updateWebhook(webhook, { url: editingUrl.trim() });
+                      }}
+                    >
+                      <input
+                        aria-label="Webhook endpoint URL"
+                        type="url"
+                        pattern="https://.*"
+                        value={editingUrl}
+                        onChange={(event) => setEditingUrl(event.target.value)}
+                        required
+                        disabled={isSaving}
+                      />
+                      <button className="settings-submit" type="submit" disabled={isSaving}>Save URL</button>
+                      <button className="settings-cancel" type="button" onClick={() => setEditingWebhookId('')} disabled={isSaving}>Cancel</button>
+                    </form>
+                  ) : <code>{webhook.url}</code>}
+                </div>
+                <div className="project-actions">
+                  <button
+                    className="settings-cancel"
+                    type="button"
+                    onClick={() => updateWebhook(webhook, { is_active: !webhook.is_active })}
+                    disabled={isSaving}
+                  >
+                    {webhook.is_active ? 'Pause' : 'Activate'}
+                  </button>
+                  <button
+                    className="settings-cancel"
+                    type="button"
+                    onClick={() => {
+                      setEditingWebhookId(webhook.id);
+                      setEditingUrl(webhook.url);
+                    }}
+                    disabled={isSaving}
+                  >Edit URL</button>
+                  <button className="settings-cancel" type="button" onClick={() => testWebhook(webhook)} disabled={isSaving}>
+                    {isSaving ? 'Working…' : 'Send test'}
+                  </button>
+                  {confirmDeleteWebhookId === webhook.id ? (
+                    <>
+                      <button className="settings-delete" type="button" onClick={() => deleteWebhook(webhook)} disabled={isSaving}>
+                        {isSaving ? 'Deleting…' : 'Confirm delete'}
+                      </button>
+                      <button className="settings-cancel" type="button" onClick={() => setConfirmDeleteWebhookId('')} disabled={isSaving}>Cancel</button>
+                    </>
+                  ) : (
+                    <button className="settings-delete" type="button" onClick={() => setConfirmDeleteWebhookId(webhook.id)} disabled={isSaving}>
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <small>Created {webhook.created_at ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(webhook.created_at)) : '—'}</small>
+              </article>
+            ))}
+            {!isLoading && webhooks.length === 0 && <div className="empty-forms">No webhooks for this project yet.</div>}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user }) {
   const [projects, setProjects] = useState([]);
-  const [forms, setForms] = useState(isPreview ? [...initialForms, ...previewForms] : []);
+  const [forms, setForms] = useState([]);
   const [activeView, setActiveView] = useState('overview');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedResponseFormId, setSelectedResponseFormId] = useState('');
+  const [selectedFormDetailsId, setSelectedFormDetailsId] = useState('');
   const [renamingFormId, setRenamingFormId] = useState('');
   const [renameValue, setRenameValue] = useState('');
   const [deletingFormId, setDeletingFormId] = useState('');
@@ -855,7 +1560,7 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [isLoading, setIsLoading] = useState(!isPreview);
+  const [isLoading, setIsLoading] = useState(true);
   const today = new Intl.DateTimeFormat('en-US', {
     weekday: 'long',
     month: 'long',
@@ -863,8 +1568,6 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
   }).format(new Date());
 
   useEffect(() => {
-    if (isPreview) return undefined;
-
     const controller = new AbortController();
     async function loadDashboard() {
       setIsLoading(true);
@@ -934,12 +1637,28 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
 
     loadDashboard();
     return () => controller.abort();
-  }, [accessToken, isPreview, reloadKey]);
+  }, [accessToken, reloadKey]);
 
-  const filteredForms = forms.filter((form) => form.name.toLowerCase().includes(search.toLowerCase()));
+  useEffect(() => {
+    if (!projects.some((project) => project.id === selectedProjectId)) {
+      setSelectedProjectId(projects[0]?.id || '');
+    }
+  }, [projects, selectedProjectId]);
+
+  const filteredForms = forms.filter((form) => (
+    (!selectedProjectId || form.projectId === selectedProjectId)
+    && form.name.toLowerCase().includes(search.toLowerCase())
+  ));
   const totalResponses = forms.reduce((total, form) => total + form.responses, 0);
   const greetingName = user?.name?.trim().split(/\s+/)[0] || 'there';
   const initials = user?.name?.trim().charAt(0).toUpperCase() || 'J';
+  const selectedProject = projects.find((project) => project.id === selectedProjectId);
+
+  function selectProject(projectId) {
+    setSelectedProjectId(projectId);
+    setSearch('');
+    setActiveView('forms');
+  }
 
   async function changeFormStatus(form) {
     try {
@@ -992,6 +1711,7 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
         { method: 'DELETE' },
       );
       setForms((currentForms) => currentForms.filter((currentForm) => currentForm.id !== form.id));
+      setSelectedFormDetailsId((currentId) => currentId === form.id ? '' : currentId);
       setDeletingFormId('');
       setNotice(`${form.name} was deleted.`);
     } catch (requestError) {
@@ -1005,7 +1725,21 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
         <BrandMark />
         <div className="workspace-switcher">
           <span className="workspace-avatar">F</span>
-          <span className="workspace-name"><strong>{projects[0]?.name || 'FormSlug Studio'}</strong><small>{isPreview ? 'Free workspace' : user?.email || 'Workspace'}</small></span>
+          <span className="workspace-name">
+            <strong>{selectedProject?.name || 'Select a project'}</strong>
+            <small>{user?.email || 'Workspace'}</small>
+          </span>
+          <select
+            className="workspace-project-select"
+            aria-label="Select project"
+            value={selectedProjectId}
+            onChange={(event) => selectProject(event.target.value)}
+            disabled={isLoading || projects.length === 0}
+          >
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>{project.name}</option>
+            ))}
+          </select>
           <ChevronDown size={15} />
         </div>
         <div className="sidebar-label">WORKSPACE</div>
@@ -1013,49 +1747,55 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
           <button className={`dashboard-nav-item${activeView === 'overview' ? ' active' : ''}`} type="button" onClick={() => setActiveView('overview')}>
             <LayoutDashboard size={17} /> Overview
           </button>
-          <button className={`dashboard-nav-item${activeView === 'responses' ? ' active' : ''}`} type="button" onClick={() => {
-            if (isPreview) {
-              setNotice('Response management is available after connecting an account.');
-            } else {
-              setActiveView('responses');
-            }
-          }}>
-            <Inbox size={17} /> Responses
-            {!isPreview && <span className="nav-count">{totalResponses}</span>}
+          <button className={`dashboard-nav-item${activeView === 'forms' ? ' active' : ''}`} type="button" onClick={() => setActiveView('forms')}>
+            <FileText size={17} /> Forms
           </button>
-          <button className={`dashboard-nav-item${activeView === 'settings' ? ' active' : ''}`} type="button" onClick={() => {
-            if (isPreview) {
-              setNotice('Account settings are available after connecting an account.');
-            } else {
-              setActiveView('settings');
-            }
-          }}>
+          <button className={`dashboard-nav-item${activeView === 'projects' ? ' active' : ''}`} type="button" onClick={() => setActiveView('projects')}>
+            <Shapes size={17} /> Projects
+          </button>
+          <button className={`dashboard-nav-item${activeView === 'webhooks' ? ' active' : ''}`} type="button" onClick={() => setActiveView('webhooks')}>
+            <Webhook size={17} /> Webhooks
+          </button>
+          <button className={`dashboard-nav-item${activeView === 'responses' ? ' active' : ''}`} type="button" onClick={() => setActiveView('responses')}>
+            <Inbox size={17} /> Responses
+            <span className="nav-count">{totalResponses}</span>
+          </button>
+          <button className={`dashboard-nav-item${activeView === 'settings' ? ' active' : ''}`} type="button" onClick={() => setActiveView('settings')}>
             <Settings2 size={17} /> Settings
           </button>
         </nav>
         <div className="sidebar-bottom">
-          <div className="preview-card">
-            <span className="preview-card-icon"><Sparkles size={15} /></span>
-            <strong>{isPreview ? 'Preview mode' : 'Connected workspace'}</strong>
-            <p>{isPreview ? 'Your sample workspace is stored only in this page.' : 'Your forms are synced with your account.'}</p>
+          <div className="workspace-info-card">
+            <span className="workspace-info-icon"><Check size={15} /></span>
+            <strong>Workspace connected</strong>
+            <p>Your forms and responses are synced to your account.</p>
           </div>
-          <button className="profile-button" type="button" onClick={onLogout}>
+          <button className="profile-button" type="button" onClick={() => setActiveView('settings')} aria-label="Open account settings">
             <span className="profile-avatar">{initials}</span>
-            <span><strong>{user?.name || 'Jamie Parker'}</strong><small>Sign out</small></span>
-            <LogOut size={15} />
+            <span><strong>{user?.name || 'Account'}</strong><small>Account settings</small></span>
+            <Settings2 size={15} />
           </button>
         </div>
       </aside>
 
       <section className="dashboard-main">
         <header className="dashboard-topbar">
-          <div className="breadcrumb"><span>Workspace</span><span>/</span><strong>{activeView === 'responses' ? 'Responses' : activeView === 'settings' ? 'Settings' : 'Overview'}</strong></div>
+          <div className="breadcrumb"><span>Workspace</span><span>/</span><strong>{activeView === 'responses' ? 'Responses' : activeView === 'settings' ? 'Settings' : activeView === 'projects' ? 'Projects' : activeView === 'webhooks' ? 'Webhooks' : activeView === 'forms' ? 'Forms' : 'Overview'}</strong></div>
           <div className="topbar-actions">
-            <span className="demo-pill"><span /> {isPreview ? 'Demo data' : 'Live data'}</span>
-            <button className="icon-button" type="button" aria-label="Notifications" onClick={() => setNotice('You’re all caught up.')}>
+            <span className="live-pill"><span /> Live data</span>
+            <button
+              className="icon-button"
+              type="button"
+              aria-label="View new responses"
+              title="View responses"
+              onClick={() => {
+                setSelectedResponseFormId('');
+                setActiveView('responses');
+              }}
+            >
               <Bell size={18} />
             </button>
-            <button className="topbar-avatar" type="button" onClick={onLogout} aria-label="Sign out">{initials}</button>
+            <button className="topbar-avatar" type="button" onClick={() => setActiveView('settings')} aria-label="Open account settings">{initials}</button>
           </div>
         </header>
 
@@ -1063,12 +1803,19 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
           <div className="dashboard-heading">
             <div>
               <div className="dashboard-eyebrow">{today}</div>
-              <h1>Good morning, {isPreview ? 'Jamie' : greetingName} <span>✳</span></h1>
-              <p>Here’s what’s happening with your forms today.</p>
+              <h1>{activeView === 'forms' ? 'Your forms' : `Good morning, ${greetingName}`} <span>✳</span></h1>
+              <p>{activeView === 'forms' ? 'Manage every form in your workspace.' : 'Here’s what’s happening with your forms today.'}</p>
             </div>
-            <button className="create-form-button" type="button" onClick={() => onCreateForm(projects[0])} disabled={isLoading || loadError}>
-              <Plus size={17} /> Create a form
-            </button>
+            {['overview', 'forms'].includes(activeView) && <div className="create-form-actions">
+              <button
+                className="create-form-button"
+                type="button"
+                onClick={() => selectedProject ? onCreateForm(selectedProject) : setActiveView('projects')}
+                disabled={isLoading || loadError || !selectedProject}
+              >
+                <Plus size={17} /> Create a form
+              </button>
+            </div>}
           </div>
 
           {error && (
@@ -1088,7 +1835,25 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
             </div>
           )}
 
-          {activeView === 'responses' ? (
+          {activeView === 'projects' ? (
+            <ProjectsPanel
+              accessToken={accessToken}
+              projects={projects}
+              onProjectCreated={(project) => {
+                setProjects((currentProjects) => [project, ...currentProjects]);
+                setSelectedProjectId(project.id);
+              }}
+              onProjectUpdated={(updatedProject) => setProjects((currentProjects) => currentProjects.map((project) => (
+                project.id === updatedProject.id ? updatedProject : project
+              )))}
+              onProjectDeleted={(projectId) => {
+                setProjects((currentProjects) => currentProjects.filter((project) => project.id !== projectId));
+                setForms((currentForms) => currentForms.filter((form) => form.projectId !== projectId));
+              }}
+            />
+          ) : activeView === 'webhooks' ? (
+            <WebhooksPanel accessToken={accessToken} projects={projects} />
+          ) : activeView === 'responses' ? (
             <ResponsesPanel
               forms={forms}
               accessToken={accessToken}
@@ -1103,36 +1868,36 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
               onLogout={onLogout}
             />
           ) : <>
-          <div className="stats-grid">
+          {activeView === 'overview' && <div className="stats-grid">
             <article className="stat-card">
               <div className="stat-card-top"><span>Total responses</span><span className="stat-icon green"><Inbox size={17} /></span></div>
               <div className="stat-value">{isLoading || loadError ? '—' : totalResponses}</div>
               <div className="stat-foot"><span>Across your workspace</span></div>
-              <div className="stat-sparkline sparkline-green" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>
             </article>
             <article className="stat-card">
               <div className="stat-card-top"><span>Active forms</span><span className="stat-icon lavender"><FileText size={17} /></span></div>
               <div className="stat-value">{isLoading || loadError ? '—' : forms.filter((form) => form.status === 'Active').length}</div>
               <div className="stat-foot"><span>Across your workspace</span></div>
-              <div className="stat-sparkline sparkline-lavender" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>
             </article>
             <article className="stat-card">
               <div className="stat-card-top"><span>Workspace projects</span><span className="stat-icon peach"><Activity size={17} /></span></div>
-              <div className="stat-value">{isLoading || loadError ? '—' : (isPreview ? 1 : projects.length)}</div>
+              <div className="stat-value">{isLoading || loadError ? '—' : projects.length}</div>
               <div className="stat-foot"><span>Across your account</span></div>
-              <div className="completion-track"><span /></div>
             </article>
-          </div>
+          </div>}
 
-          <section className="forms-section">
+          <section className={`forms-section${activeView === 'forms' ? ' all-forms' : ''}`}>
             <div className="section-heading">
-              <div><h2>Your forms</h2><p>A little overview of what you’re collecting.</p></div>
+              <div><h2>{activeView === 'forms' ? 'All forms' : 'Your forms'}</h2><p>{activeView === 'forms' ? 'Manage every form in your workspace.' : 'A little overview of what you’re collecting.'}</p></div>
               <div className="forms-controls">
                 <label className="form-search">
                   <Search size={16} />
                   <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search forms" aria-label="Search forms" />
                 </label>
-                <button className="view-all-button" type="button" onClick={() => setSearch('')}>View all <ArrowUpRight size={15} /></button>
+                <button className="view-all-button" type="button" onClick={() => {
+                  setSearch('');
+                  setActiveView('forms');
+                }}>View all <ArrowUpRight size={15} /></button>
               </div>
             </div>
 
@@ -1141,7 +1906,8 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
               {isLoading && <div className="empty-forms">Loading your forms...</div>}
               {loadError && <div className="empty-forms">Your forms could not be loaded.</div>}
               {!isLoading && filteredForms.map((form) => (
-                <div className="form-row" key={form.id}>
+                <div className="form-list-item" key={form.id}>
+                <div className="form-row">
                   <div className="form-name-cell">
                     <span className={`form-file-icon ${form.color}`}><FileText size={17} /></span>
                     {renamingFormId === form.id ? (
@@ -1171,8 +1937,7 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
                   <span className="form-updated">{form.updated}</span>
                   <span className={`form-status ${form.status.toLowerCase()}`}><i />{form.status}</span>
                   <div className="row-actions">
-                    {!isPreview && (
-                      <>
+                    <>
                         <button
                           className="row-action-button"
                           type="button"
@@ -1185,6 +1950,15 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
                           }}
                         >
                           <Pencil size={14} />
+                        </button>
+                        <button
+                          className="row-action-button"
+                          type="button"
+                          aria-label={`${selectedFormDetailsId === form.id ? 'Hide' : 'View'} details for ${form.name}`}
+                          title="View form details"
+                          onClick={() => setSelectedFormDetailsId((currentId) => currentId === form.id ? '' : form.id)}
+                        >
+                          <Eye size={15} />
                         </button>
                         <button
                           className="row-action-button"
@@ -1234,8 +2008,7 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
                             <ArrowLeft size={14} />
                           </button>
                         )}
-                      </>
-                    )}
+                    </>
                     {form.slug && (
                       <button
                         className="row-action-button"
@@ -1256,6 +2029,15 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
                     )}
                   </div>
                 </div>
+                {selectedFormDetailsId === form.id && (
+                  <FormDetailsPanel
+                    key={form.id}
+                    accessToken={accessToken}
+                    form={form}
+                    onRotated={() => setNotice('The form API key was rotated. Update all integrations using the previous key.')}
+                  />
+                )}
+                </div>
               ))}
               {!isLoading && !loadError && filteredForms.length === 0 && (
                 <div className="empty-forms">
@@ -1263,7 +2045,7 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user, i
                 </div>
               )}
             </div>
-            <div className="table-footnote"><span className="live-dot" /> {isPreview ? 'Showing sample data · No API connection' : 'Showing live data from your workspace'}</div>
+            <div className="table-footnote"><span className="live-dot" /> Showing live data from your workspace</div>
           </section>
           </>}
 
@@ -1282,9 +2064,7 @@ export default function App() {
   const [accessToken, setAccessToken] = useState('');
   const [user, setUser] = useState(null);
   const [isRestoringSession, setIsRestoringSession] = useState(true);
-  const [isPreview, setIsPreview] = useState(false);
   const [builderProject, setBuilderProject] = useState(null);
-  const [previewForms, setPreviewForms] = useState([]);
   const [mode, setMode] = useState('register');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -1327,8 +2107,6 @@ export default function App() {
       setPage('auth');
       setAccessToken('');
       setUser(null);
-      setIsPreview(false);
-      setPreviewForms([]);
       setMode('login');
     }
   }
@@ -1337,13 +2115,9 @@ export default function App() {
     return (
       <FormBuilder
         onBack={() => setPage('dashboard')}
-        onSaved={(previewForm) => {
-          if (previewForm) setPreviewForms((currentForms) => [previewForm, ...currentForms]);
-          setPage('dashboard');
-        }}
+        onSaved={() => setPage('dashboard')}
         accessToken={accessToken}
         project={builderProject}
-        isPreview={isPreview}
       />
     );
   }
@@ -1359,8 +2133,6 @@ export default function App() {
         onUserUpdated={setUser}
         accessToken={accessToken}
         user={user}
-        isPreview={isPreview}
-        previewForms={previewForms}
       />
     );
   }
@@ -1426,7 +2198,6 @@ export default function App() {
       setAccessToken(result.data.accessToken);
       activeAccessToken = result.data.accessToken;
       setUser(result.data.user);
-      setIsPreview(false);
       setPage('dashboard');
     } catch (requestError) {
       setError(requestError instanceof TypeError
@@ -1575,12 +2346,6 @@ export default function App() {
                 </p>
                 <span className="bottom-rule" />
               </div>
-              <button className="preview-link" type="button" disabled={isLoading} onClick={() => {
-                setIsPreview(true);
-                setPage('dashboard');
-              }}>
-                Preview the workspace <ArrowRight size={14} />
-              </button>
               <div className="privacy-note"><LockKeyhole size={13} /> Your information is encrypted and kept private.</div>
           </>
         </div>

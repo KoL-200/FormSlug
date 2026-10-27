@@ -1,6 +1,6 @@
 # FormSlug Frontend
 
-The FormSlug frontend is a React application powered by Vite. Its sign-up and login screens use the backend authentication API. The workspace dashboard remains a frontend-only preview with sample data.
+The FormSlug frontend is a React application powered by Vite. Authentication, projects, forms, responses, account settings, and project webhooks use the backend API.
 
 ## Requirements
 
@@ -21,13 +21,15 @@ Open the local URL printed by Vite (usually `http://localhost:5173`).
 
 The auth forms call `POST /api/v1/auth/register` and `POST /api/v1/auth/login`. Start the backend on `http://localhost:3000` before submitting either form; Vite proxies `/api` to that address during development. Set `VITE_BACKEND_URL` in the frontend environment to proxy to a backend running elsewhere.
 
-For a deployed frontend, configure the hosting setup to route `/api` to the backend on the same origin, or set `VITE_API_BASE_URL` to the browser-accessible API base URL (defaults to `/api/v1`). The API docs link uses that base URL as well.
+For local development, set `VITE_BACKEND_URL` to the backend origin used by Vite's `/api` and `/f` proxies. For a deployed frontend, route `/api` and `/f` to the backend on the same origin, or set `VITE_API_BASE_URL` to the browser-accessible API base URL (defaults to `/api/v1`). The API docs link uses that base URL as well.
 
-After registration, the form switches to sign-in. Successful sign-in shows a confirmation; it does not open the sample dashboard, which is still only a preview and is not connected to account data.
+After registration, the form switches to sign-in. Once authenticated, the dashboard loads the signed-in user's workspace from the backend.
 
-The workspace dashboard is accessible from the sign-up/login screen using “Preview the workspace.” It displays sample data and keeps interactions in the browser only.
+Create projects in **Projects**, then use the workspace dropdown in the sidebar to select a project and view its forms. New forms are created in the selected project. **View all** opens the forms view; the notification control opens responses, and the profile control opens account settings.
 
-The form builder’s live preview accepts answers and validates required questions. Submitting it displays a local confirmation only; preview responses are not sent to the backend or saved.
+Manage project webhooks from **Webhooks**: create HTTPS endpoints, update URLs, pause or activate delivery, send test deliveries, and delete endpoints. The signing secret is displayed only when the endpoint is created; save it securely at that time.
+
+The form builder includes an interactive local preview. Test responses entered in that preview are not sent to the backend or saved.
 
 ## Scripts
 
