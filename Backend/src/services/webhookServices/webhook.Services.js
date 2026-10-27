@@ -3,6 +3,19 @@ const { prisma } = require('../../config/database.Config')
 const { nanoid } = require('nanoid')
 const { NotFoundError } = require('../../utils/AppError')
 
+const listWebhooks = async ({ projectId }) => prisma.webhookEndpoint.findMany({
+    where: { project_id: projectId },
+    select: {
+        id: true,
+        project_id: true,
+        url: true,
+        events: true,
+        is_active: true,
+        created_at: true,
+    },
+    orderBy: { created_at: 'desc' },
+})
+
 const createWebhook = async ({ projectId, url }) => {
     const secret = nanoid(32)
 
@@ -37,6 +50,14 @@ const updateWebhook = async ({ projectId, webhookId, url, is_active }) => {
 
     return prisma.webhookEndpoint.findUnique({
         where: { id: webhookId },
+        select: {
+            id: true,
+            project_id: true,
+            url: true,
+            events: true,
+            is_active: true,
+            created_at: true,
+        },
     });
 }
 
@@ -53,6 +74,7 @@ const deleteWebhook = async ({ projectId, webhookId }) => {
 };
 
 module.exports = {
+    listWebhooks,
     createWebhook,
     updateWebhook,
     deleteWebhook

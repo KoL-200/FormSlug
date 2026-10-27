@@ -42,9 +42,9 @@ const testWebhook = async ({ projectId, webhookId }) => {
         });
 
         return {
-            delivered: true,
+            delivered: response.ok,
             statusCode: response.status,
-            error: null,
+            error: response.ok ? null : `Webhook endpoint responded with HTTP ${response.status}.`,
         };
     } catch (err) {
         return {

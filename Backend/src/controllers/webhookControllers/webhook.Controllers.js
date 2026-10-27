@@ -1,5 +1,12 @@
-const { createWebhook, updateWebhook, deleteWebhook } = require("../../services/webhookServices/webhook.Services");
+const { listWebhooks, createWebhook, updateWebhook, deleteWebhook } = require("../../services/webhookServices/webhook.Services");
 const { testWebhook } = require('../../services/webhookServices/testWebhook.Services');
+const { writeAuditLog } = require('../../utils/auditLog');
+
+const listWebhooksController = async (req, res) => {
+    const { projectId } = req.params;
+    const webhooks = await listWebhooks({ projectId });
+    res.status(200).json({ success: true, data: webhooks });
+};
 
 const createWebhookController = async (req, res) => {
     const { projectId } = req.params;
@@ -43,6 +50,7 @@ const testWebhookController = async (req, res) => {
 };
 
 module.exports = {
+    listWebhooksController,
     createWebhookController,
     updateWebhookController,
     deleteWebhookController,

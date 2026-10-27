@@ -4,9 +4,9 @@ const { writeAuditLog } = require('../../utils/auditLog');
 const createFormController = async (req, res) => {
     const projectId = req.params.projectId;
     const userId = req.user.id;
-    const { name, notification_email } = req.body;
+    const { name, notification_email, config } = req.body;
 
-    const createdForm = await createForm({ projectId, userId, name, notificationEmail: notification_email });
+    const createdForm = await createForm({ projectId, userId, name, notificationEmail: notification_email, config });
     res.status(201).json({ success: true, data: createdForm });
 }
 
