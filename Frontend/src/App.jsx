@@ -5,6 +5,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Bell,
+  BookOpen,
   Check,
   ChevronDown,
   Copy,
@@ -113,6 +114,107 @@ function restoreSession() {
     });
   }
   return sessionRestorePromise;
+}
+
+const tutorialSteps = [
+  {
+    title: 'Start with a project',
+    section: '01 / ORGANIZE',
+    description: 'Projects keep related forms together. Open Projects in the sidebar to create a project, then choose it from the workspace selector.',
+    tip: 'You can create separate projects for different teams, clients, or workflows.',
+  },
+  {
+    title: 'Build your first form',
+    section: '02 / CREATE',
+    description: 'Choose a project, open Forms, and select New form. Add the fields you need in the builder, preview the form, and save it when it is ready.',
+    tip: 'The builder preview is local. Submit a real response through the published form to save it to your workspace.',
+  },
+  {
+    title: 'Publish and share',
+    section: '03 / PUBLISH',
+    description: 'Activate a form when you are ready to accept responses. Each active form has a public URL based on its slug that you can share or connect to your site.',
+    tip: 'You can also submit JSON to the form URL from your own application. Form API keys are shown only when created or rotated, so store them securely.',
+  },
+  {
+    title: 'Review incoming responses',
+    section: '04 / RESPONSES',
+    description: 'Open Responses from the sidebar or the notification bell to review submissions. You can export responses as CSV and restore submissions you have soft-deleted.',
+    tip: 'Use the form selector in Responses to focus on submissions for one form.',
+  },
+  {
+    title: 'Connect the rest of your workflow',
+    section: '05 / AUTOMATE',
+    description: 'Set up project webhooks to send submission events to another service, or open Settings to update your account details and password.',
+    tip: 'Webhook endpoints must use HTTPS. Save the signing secret when it is first shown; you cannot retrieve it later.',
+  },
+];
+
+function TutorialGuide({ onDismiss }) {
+  const [stepIndex, setStepIndex] = useState(0);
+  const step = tutorialSteps[stepIndex];
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') onDismiss();
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onDismiss]);
+
+  return (
+    <div className="tutorial-backdrop" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onDismiss();
+    }}>
+      <section
+        className="tutorial-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tutorial-title"
+        aria-describedby="tutorial-description"
+      >
+        <div className="tutorial-topline">
+          <span><BookOpen size={16} /> FORMSLUG QUICK GUIDE</span>
+          <button type="button" className="tutorial-close" onClick={onDismiss} aria-label="Close tutorial">×</button>
+        </div>
+        <div className="tutorial-progress" aria-label={`Step ${stepIndex + 1} of ${tutorialSteps.length}`}>
+          {tutorialSteps.map((tutorialStep, index) => (
+            <span key={tutorialStep.section} className={index <= stepIndex ? 'complete' : ''} />
+          ))}
+        </div>
+        <div className="tutorial-step-label">{step.section}</div>
+        <h2 id="tutorial-title">{step.title}</h2>
+        <p id="tutorial-description">{step.description}</p>
+        <div className="tutorial-tip">
+          <Sparkles size={16} />
+          <span>{step.tip}</span>
+        </div>
+        <div className="tutorial-footer">
+          <button className="tutorial-skip" type="button" onClick={onDismiss}>Skip guide</button>
+          <div className="tutorial-controls">
+            {stepIndex > 0 && (
+              <button className="tutorial-previous" type="button" onClick={() => setStepIndex((current) => current - 1)}>
+                <ArrowLeft size={15} /> Back
+              </button>
+            )}
+            <button
+              className="tutorial-next"
+              type="button"
+              onClick={() => {
+                if (stepIndex === tutorialSteps.length - 1) {
+                  onDismiss();
+                } else {
+                  setStepIndex((current) => current + 1);
+                }
+              }}
+            >
+              {stepIndex === tutorialSteps.length - 1 ? 'Finish guide' : 'Next'} <ArrowRight size={15} />
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function BrandMark({ light = false }) {
@@ -1561,11 +1663,24 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user })
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const tutorialStorageKey = user?.id ? `formslug:tutorial-seen:${user.id}` : '';
   const today = new Intl.DateTimeFormat('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
   }).format(new Date());
+
+  useEffect(() => {
+    if (tutorialStorageKey && window.localStorage.getItem(tutorialStorageKey) !== 'true') {
+      setIsTutorialOpen(true);
+    }
+  }, [tutorialStorageKey]);
+
+  function dismissTutorial() {
+    if (tutorialStorageKey) window.localStorage.setItem(tutorialStorageKey, 'true');
+    setIsTutorialOpen(false);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1721,6 +1836,7 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user })
 
   return (
     <main className="dashboard-shell">
+      {isTutorialOpen && <TutorialGuide onDismiss={dismissTutorial} />}
       <aside className="dashboard-sidebar">
         <BrandMark />
         <div className="workspace-switcher">
@@ -1762,6 +1878,13 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user })
           </button>
           <button className={`dashboard-nav-item${activeView === 'settings' ? ' active' : ''}`} type="button" onClick={() => setActiveView('settings')}>
             <Settings2 size={17} /> Settings
+          </button>
+          <button
+            className="dashboard-nav-item"
+            type="button"
+            onClick={() => setIsTutorialOpen(true)}
+          >
+            <BookOpen size={17} /> Tutorial
           </button>
         </nav>
         <div className="sidebar-bottom">
