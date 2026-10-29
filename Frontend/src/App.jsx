@@ -402,108 +402,108 @@ function FormBuilder({ onBack, onSaved, accessToken, project }) {
         <div className="builder-layout">
           <section className="builder-editor" aria-label="Edit form">
             <form id="form-builder" className="builder-editor-form" onSubmit={saveForm}>
-            <div className="builder-card">
-              <label className="builder-label" htmlFor="builder-title">Form title</label>
-              <input
-                id="builder-title"
-                className="builder-title-input"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                maxLength={120}
-                placeholder="Untitled form"
-                required
-              />
-              <label className="builder-label" htmlFor="builder-description">Description <span>Optional</span></label>
-              <textarea
-                id="builder-description"
-                className="builder-description-input"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                maxLength={500}
-                placeholder="Tell people what this form is about"
-                rows={3}
-              />
-              <label className="builder-label" htmlFor="builder-notification-email">
-                Response notifications <span>Optional</span>
-              </label>
-              <input
-                id="builder-notification-email"
-                className="builder-question-input"
-                type="email"
-                value={notificationEmail}
-                onChange={(event) => setNotificationEmail(event.target.value)}
-                maxLength={254}
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-            </div>
+              <div className="builder-card">
+                <label className="builder-label" htmlFor="builder-title">Form title</label>
+                <input
+                  id="builder-title"
+                  className="builder-title-input"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  maxLength={120}
+                  placeholder="Untitled form"
+                  required
+                />
+                <label className="builder-label" htmlFor="builder-description">Description <span>Optional</span></label>
+                <textarea
+                  id="builder-description"
+                  className="builder-description-input"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  maxLength={500}
+                  placeholder="Tell people what this form is about"
+                  rows={3}
+                />
+                <label className="builder-label" htmlFor="builder-notification-email">
+                  Response notifications <span>Optional</span>
+                </label>
+                <input
+                  id="builder-notification-email"
+                  className="builder-question-input"
+                  type="email"
+                  value={notificationEmail}
+                  onChange={(event) => setNotificationEmail(event.target.value)}
+                  maxLength={254}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+              </div>
 
-            <div className="builder-fields-heading">
-              <div><h2>Questions</h2><p>Add the details you want to collect.</p></div>
-              <span>{fields.length} {fields.length === 1 ? 'question' : 'questions'}</span>
-            </div>
+              <div className="builder-fields-heading">
+                <div><h2>Questions</h2><p>Add the details you want to collect.</p></div>
+                <span>{fields.length} {fields.length === 1 ? 'question' : 'questions'}</span>
+              </div>
 
-            <div className="builder-field-list">
-              {fields.map((field, index) => (
-                <article className="builder-field-card" key={field.id}>
-                  <div className="builder-field-top">
-                    <span className="builder-field-number"><GripVertical size={14} /> {String(index + 1).padStart(2, '0')}</span>
-                    <label className="builder-type-select">
-                      <span className="sr-only">Question type</span>
-                      <select
-                        aria-label={`Question ${index + 1} type`}
-                        value={field.type}
-                        onChange={(event) => updateField(field.id, { type: event.target.value })}
+              <div className="builder-field-list">
+                {fields.map((field, index) => (
+                  <article className="builder-field-card" key={field.id}>
+                    <div className="builder-field-top">
+                      <span className="builder-field-number"><GripVertical size={14} /> {String(index + 1).padStart(2, '0')}</span>
+                      <label className="builder-type-select">
+                        <span className="sr-only">Question type</span>
+                        <select
+                          aria-label={`Question ${index + 1} type`}
+                          value={field.type}
+                          onChange={(event) => updateField(field.id, { type: event.target.value })}
+                        >
+                          <option value="text">Short answer</option>
+                          <option value="email">Email</option>
+                          <option value="textarea">Long answer</option>
+                        </select>
+                      </label>
+                      <button
+                        className="builder-remove-field"
+                        type="button"
+                        aria-label={`Remove question ${index + 1}`}
+                        onClick={() => setFields((currentFields) => currentFields.filter((item) => item.id !== field.id))}
+                        disabled={fields.length === 1}
                       >
-                        <option value="text">Short answer</option>
-                        <option value="email">Email</option>
-                        <option value="textarea">Long answer</option>
-                      </select>
-                    </label>
-                    <button
-                      className="builder-remove-field"
-                      type="button"
-                      aria-label={`Remove question ${index + 1}`}
-                      onClick={() => setFields((currentFields) => currentFields.filter((item) => item.id !== field.id))}
-                      disabled={fields.length === 1}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                  <label className="builder-label" htmlFor={`field-label-${field.id}`}>Question</label>
-                  <input
-                    id={`field-label-${field.id}`}
-                    className="builder-question-input"
-                    value={field.label}
-                    onChange={(event) => updateField(field.id, { label: event.target.value })}
-                    maxLength={120}
-                    placeholder="Write your question"
-                    required
-                  />
-                  <label className="builder-label" htmlFor={`field-placeholder-${field.id}`}>Placeholder <span>Optional</span></label>
-                  <input
-                    id={`field-placeholder-${field.id}`}
-                    className="builder-question-input"
-                    value={field.placeholder}
-                    onChange={(event) => updateField(field.id, { placeholder: event.target.value })}
-                    maxLength={120}
-                    placeholder="Enter your answer"
-                  />
-                  <label className="builder-required">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                    <label className="builder-label" htmlFor={`field-label-${field.id}`}>Question</label>
                     <input
-                      type="checkbox"
-                      checked={field.required}
-                      onChange={(event) => updateField(field.id, { required: event.target.checked })}
+                      id={`field-label-${field.id}`}
+                      className="builder-question-input"
+                      value={field.label}
+                      onChange={(event) => updateField(field.id, { label: event.target.value })}
+                      maxLength={120}
+                      placeholder="Write your question"
+                      required
                     />
-                    <span>Required question</span>
-                  </label>
-                </article>
-              ))}
-            </div>
+                    <label className="builder-label" htmlFor={`field-placeholder-${field.id}`}>Placeholder <span>Optional</span></label>
+                    <input
+                      id={`field-placeholder-${field.id}`}
+                      className="builder-question-input"
+                      value={field.placeholder}
+                      onChange={(event) => updateField(field.id, { placeholder: event.target.value })}
+                      maxLength={120}
+                      placeholder="Enter your answer"
+                    />
+                    <label className="builder-required">
+                      <input
+                        type="checkbox"
+                        checked={field.required}
+                        onChange={(event) => updateField(field.id, { required: event.target.checked })}
+                      />
+                      <span>Required question</span>
+                    </label>
+                  </article>
+                ))}
+              </div>
 
-            <button className="builder-add-field" type="button" onClick={addField}>
-              <Plus size={16} /> Add a question
-            </button>
+              <button className="builder-add-field" type="button" onClick={addField}>
+                <Plus size={16} /> Add a question
+              </button>
             </form>
           </section>
 
@@ -1991,185 +1991,185 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user })
               onLogout={onLogout}
             />
           ) : <>
-          {activeView === 'overview' && <div className="stats-grid">
-            <article className="stat-card">
-              <div className="stat-card-top"><span>Total responses</span><span className="stat-icon green"><Inbox size={17} /></span></div>
-              <div className="stat-value">{isLoading || loadError ? '—' : totalResponses}</div>
-              <div className="stat-foot"><span>Across your workspace</span></div>
-            </article>
-            <article className="stat-card">
-              <div className="stat-card-top"><span>Active forms</span><span className="stat-icon lavender"><FileText size={17} /></span></div>
-              <div className="stat-value">{isLoading || loadError ? '—' : forms.filter((form) => form.status === 'Active').length}</div>
-              <div className="stat-foot"><span>Across your workspace</span></div>
-            </article>
-            <article className="stat-card">
-              <div className="stat-card-top"><span>Workspace projects</span><span className="stat-icon peach"><Activity size={17} /></span></div>
-              <div className="stat-value">{isLoading || loadError ? '—' : projects.length}</div>
-              <div className="stat-foot"><span>Across your account</span></div>
-            </article>
-          </div>}
+            {activeView === 'overview' && <div className="stats-grid">
+              <article className="stat-card">
+                <div className="stat-card-top"><span>Total responses</span><span className="stat-icon green"><Inbox size={17} /></span></div>
+                <div className="stat-value">{isLoading || loadError ? '—' : totalResponses}</div>
+                <div className="stat-foot"><span>Across your workspace</span></div>
+              </article>
+              <article className="stat-card">
+                <div className="stat-card-top"><span>Active forms</span><span className="stat-icon lavender"><FileText size={17} /></span></div>
+                <div className="stat-value">{isLoading || loadError ? '—' : forms.filter((form) => form.status === 'Active').length}</div>
+                <div className="stat-foot"><span>Across your workspace</span></div>
+              </article>
+              <article className="stat-card">
+                <div className="stat-card-top"><span>Workspace projects</span><span className="stat-icon peach"><Activity size={17} /></span></div>
+                <div className="stat-value">{isLoading || loadError ? '—' : projects.length}</div>
+                <div className="stat-foot"><span>Across your account</span></div>
+              </article>
+            </div>}
 
-          <section className={`forms-section${activeView === 'forms' ? ' all-forms' : ''}`}>
-            <div className="section-heading">
-              <div><h2>{activeView === 'forms' ? 'All forms' : 'Your forms'}</h2><p>{activeView === 'forms' ? 'Manage every form in your workspace.' : 'A little overview of what you’re collecting.'}</p></div>
-              <div className="forms-controls">
-                <label className="form-search">
-                  <Search size={16} />
-                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search forms" aria-label="Search forms" />
-                </label>
-                <button className="view-all-button" type="button" onClick={() => {
-                  setSearch('');
-                  setActiveView('forms');
-                }}>View all <ArrowUpRight size={15} /></button>
+            <section className={`forms-section${activeView === 'forms' ? ' all-forms' : ''}`}>
+              <div className="section-heading">
+                <div><h2>{activeView === 'forms' ? 'All forms' : 'Your forms'}</h2><p>{activeView === 'forms' ? 'Manage every form in your workspace.' : 'A little overview of what you’re collecting.'}</p></div>
+                <div className="forms-controls">
+                  <label className="form-search">
+                    <Search size={16} />
+                    <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search forms" aria-label="Search forms" />
+                  </label>
+                  <button className="view-all-button" type="button" onClick={() => {
+                    setSearch('');
+                    setActiveView('forms');
+                  }}>View all <ArrowUpRight size={15} /></button>
+                </div>
               </div>
-            </div>
 
-            <div className="forms-table">
-              <div className="forms-table-head"><span>FORM NAME</span><span>RESPONSES</span><span>LAST UPDATED</span><span>STATUS</span><span /></div>
-              {isLoading && <div className="empty-forms">Loading your forms...</div>}
-              {loadError && <div className="empty-forms">Your forms could not be loaded.</div>}
-              {!isLoading && filteredForms.map((form) => (
-                <div className="form-list-item" key={form.id}>
-                <div className="form-row">
-                  <div className="form-name-cell">
-                    <span className={`form-file-icon ${form.color}`}><FileText size={17} /></span>
-                    {renamingFormId === form.id ? (
-                      <form
-                        className="inline-form-rename"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          renameForm(form);
-                        }}
-                      >
-                        <input
-                          aria-label={`New name for ${form.name}`}
-                          value={renameValue}
-                          onChange={(event) => setRenameValue(event.target.value)}
-                          maxLength={120}
-                          autoFocus
-                          required
-                        />
-                        <button type="submit" aria-label="Save form name" title="Save name"><Check size={14} /></button>
-                        <button type="button" aria-label="Cancel form rename" title="Cancel" onClick={() => setRenamingFormId('')}><ArrowLeft size={14} /></button>
-                      </form>
-                    ) : (
-                      <strong>{form.name}</strong>
-                    )}
-                  </div>
-                  <span className="form-response-count">{form.responses}</span>
-                  <span className="form-updated">{form.updated}</span>
-                  <span className={`form-status ${form.status.toLowerCase()}`}><i />{form.status}</span>
-                  <div className="row-actions">
-                    <>
-                        <button
-                          className="row-action-button"
-                          type="button"
-                          aria-label={`Rename ${form.name}`}
-                          title="Rename form"
-                          onClick={() => {
-                            setRenameValue(form.name);
-                            setRenamingFormId(form.id);
-                            setDeletingFormId('');
-                          }}
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          className="row-action-button"
-                          type="button"
-                          aria-label={`${selectedFormDetailsId === form.id ? 'Hide' : 'View'} details for ${form.name}`}
-                          title="View form details"
-                          onClick={() => setSelectedFormDetailsId((currentId) => currentId === form.id ? '' : form.id)}
-                        >
-                          <Eye size={15} />
-                        </button>
-                        <button
-                          className="row-action-button"
-                          type="button"
-                          aria-label={`View responses for ${form.name}`}
-                          title="View responses"
-                          onClick={() => {
-                            setSelectedResponseFormId(form.id);
-                            setActiveView('responses');
-                          }}
-                        >
-                          <Inbox size={15} />
-                        </button>
-                        <button
-                          className="row-action-button"
-                          type="button"
-                          aria-label={`${form.status === 'Active' ? 'Deactivate' : 'Activate'} ${form.name}`}
-                          title={form.status === 'Active' ? 'Deactivate form' : 'Activate form'}
-                          onClick={() => changeFormStatus(form)}
-                        >
-                          <Check size={15} />
-                        </button>
-                        <button
-                          className="row-action-button danger"
-                          type="button"
-                          aria-label={deletingFormId === form.id ? `Confirm delete ${form.name}` : `Delete ${form.name}`}
-                          title={deletingFormId === form.id ? 'Confirm deletion' : 'Delete form'}
-                          onClick={() => {
-                            if (deletingFormId === form.id) {
-                              removeForm(form);
-                            } else {
-                              setDeletingFormId(form.id);
-                              setRenamingFormId('');
-                            }
-                          }}
-                        >
-                          {deletingFormId === form.id ? <Check size={15} /> : <Trash2 size={15} />}
-                        </button>
-                        {deletingFormId === form.id && (
+              <div className="forms-table">
+                <div className="forms-table-head"><span>FORM NAME</span><span>RESPONSES</span><span>LAST UPDATED</span><span>STATUS</span><span /></div>
+                {isLoading && <div className="empty-forms">Loading your forms...</div>}
+                {loadError && <div className="empty-forms">Your forms could not be loaded.</div>}
+                {!isLoading && filteredForms.map((form) => (
+                  <div className="form-list-item" key={form.id}>
+                    <div className="form-row">
+                      <div className="form-name-cell">
+                        <span className={`form-file-icon ${form.color}`}><FileText size={17} /></span>
+                        {renamingFormId === form.id ? (
+                          <form
+                            className="inline-form-rename"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              renameForm(form);
+                            }}
+                          >
+                            <input
+                              aria-label={`New name for ${form.name}`}
+                              value={renameValue}
+                              onChange={(event) => setRenameValue(event.target.value)}
+                              maxLength={120}
+                              autoFocus
+                              required
+                            />
+                            <button type="submit" aria-label="Save form name" title="Save name"><Check size={14} /></button>
+                            <button type="button" aria-label="Cancel form rename" title="Cancel" onClick={() => setRenamingFormId('')}><ArrowLeft size={14} /></button>
+                          </form>
+                        ) : (
+                          <strong>{form.name}</strong>
+                        )}
+                      </div>
+                      <span className="form-response-count">{form.responses}</span>
+                      <span className="form-updated">{form.updated}</span>
+                      <span className={`form-status ${form.status.toLowerCase()}`}><i />{form.status}</span>
+                      <div className="row-actions">
+                        <>
                           <button
                             className="row-action-button"
                             type="button"
-                            aria-label="Cancel form deletion"
-                            title="Cancel deletion"
-                            onClick={() => setDeletingFormId('')}
+                            aria-label={`Rename ${form.name}`}
+                            title="Rename form"
+                            onClick={() => {
+                              setRenameValue(form.name);
+                              setRenamingFormId(form.id);
+                              setDeletingFormId('');
+                            }}
                           >
-                            <ArrowLeft size={14} />
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            className="row-action-button"
+                            type="button"
+                            aria-label={`${selectedFormDetailsId === form.id ? 'Hide' : 'View'} details for ${form.name}`}
+                            title="View form details"
+                            onClick={() => setSelectedFormDetailsId((currentId) => currentId === form.id ? '' : form.id)}
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button
+                            className="row-action-button"
+                            type="button"
+                            aria-label={`View responses for ${form.name}`}
+                            title="View responses"
+                            onClick={() => {
+                              setSelectedResponseFormId(form.id);
+                              setActiveView('responses');
+                            }}
+                          >
+                            <Inbox size={15} />
+                          </button>
+                          <button
+                            className="row-action-button"
+                            type="button"
+                            aria-label={`${form.status === 'Active' ? 'Deactivate' : 'Activate'} ${form.name}`}
+                            title={form.status === 'Active' ? 'Deactivate form' : 'Activate form'}
+                            onClick={() => changeFormStatus(form)}
+                          >
+                            <Check size={15} />
+                          </button>
+                          <button
+                            className="row-action-button danger"
+                            type="button"
+                            aria-label={deletingFormId === form.id ? `Confirm delete ${form.name}` : `Delete ${form.name}`}
+                            title={deletingFormId === form.id ? 'Confirm deletion' : 'Delete form'}
+                            onClick={() => {
+                              if (deletingFormId === form.id) {
+                                removeForm(form);
+                              } else {
+                                setDeletingFormId(form.id);
+                                setRenamingFormId('');
+                              }
+                            }}
+                          >
+                            {deletingFormId === form.id ? <Check size={15} /> : <Trash2 size={15} />}
+                          </button>
+                          {deletingFormId === form.id && (
+                            <button
+                              className="row-action-button"
+                              type="button"
+                              aria-label="Cancel form deletion"
+                              title="Cancel deletion"
+                              onClick={() => setDeletingFormId('')}
+                            >
+                              <ArrowLeft size={14} />
+                            </button>
+                          )}
+                        </>
+                        {form.slug && (
+                          <button
+                            className="row-action-button"
+                            type="button"
+                            aria-label={`Copy public endpoint for ${form.name}`}
+                            title="Copy public endpoint"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(getPublicFormUrl(form.slug));
+                                setNotice('Public submission URL copied.');
+                              } catch {
+                                setError('Clipboard access is unavailable in this browser.');
+                              }
+                            }}
+                          >
+                            <Copy size={15} />
                           </button>
                         )}
-                    </>
-                    {form.slug && (
-                      <button
-                        className="row-action-button"
-                        type="button"
-                        aria-label={`Copy public endpoint for ${form.name}`}
-                        title="Copy public endpoint"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(getPublicFormUrl(form.slug));
-                            setNotice('Public submission URL copied.');
-                          } catch {
-                            setError('Clipboard access is unavailable in this browser.');
-                          }
-                        }}
-                      >
-                        <Copy size={15} />
-                      </button>
+                      </div>
+                    </div>
+                    {selectedFormDetailsId === form.id && (
+                      <FormDetailsPanel
+                        key={form.id}
+                        accessToken={accessToken}
+                        form={form}
+                        onRotated={() => setNotice('The form API key was rotated. Update all integrations using the previous key.')}
+                      />
                     )}
                   </div>
-                </div>
-                {selectedFormDetailsId === form.id && (
-                  <FormDetailsPanel
-                    key={form.id}
-                    accessToken={accessToken}
-                    form={form}
-                    onRotated={() => setNotice('The form API key was rotated. Update all integrations using the previous key.')}
-                  />
+                ))}
+                {!isLoading && !loadError && filteredForms.length === 0 && (
+                  <div className="empty-forms">
+                    {search ? `No forms match “${search}”.` : 'No forms yet. Create your first form to get started.'}
+                  </div>
                 )}
-                </div>
-              ))}
-              {!isLoading && !loadError && filteredForms.length === 0 && (
-                <div className="empty-forms">
-                  {search ? `No forms match “${search}”.` : 'No forms yet. Create your first form to get started.'}
-                </div>
-              )}
-            </div>
-            <div className="table-footnote"><span className="live-dot" /> Showing live data from your workspace</div>
-          </section>
+              </div>
+              <div className="table-footnote"><span className="live-dot" /> Showing live data from your workspace</div>
+            </section>
           </>}
 
           <footer className="dashboard-footer">
@@ -2358,125 +2358,125 @@ export default function App() {
         <div className="mobile-brand"><BrandMark /></div>
         <div className="auth-content">
           <>
-              <div className="auth-heading">
-                <div className="auth-kicker">{isRegister ? 'A FRESH START' : 'WELCOME BACK'}</div>
-                <h2>{isRegister ? 'Create your account' : 'Sign in to FormSlug'}</h2>
-                <p className="auth-subtitle">
-                  {isRegister
-                    ? 'A better way to collect, manage, and understand every response.'
-                    : 'Pick up where you left off. Your responses are waiting.'}
-                </p>
-              </div>
+            <div className="auth-heading">
+              <div className="auth-kicker">{isRegister ? 'A FRESH START' : 'WELCOME BACK'}</div>
+              <h2>{isRegister ? 'Create your account' : 'Sign in to FormSlug'}</h2>
+              <p className="auth-subtitle">
+                {isRegister
+                  ? 'A better way to collect, manage, and understand every response.'
+                  : 'Pick up where you left off. Your responses are waiting.'}
+              </p>
+            </div>
 
-              <div className="auth-tabs" role="group" aria-label="Account access">
-                <button
-                  className={`auth-tab${isRegister ? ' active' : ''}`}
-                  aria-pressed={isRegister}
-                  onClick={() => changeMode('register')}
+            <div className="auth-tabs" role="group" aria-label="Account access">
+              <button
+                className={`auth-tab${isRegister ? ' active' : ''}`}
+                aria-pressed={isRegister}
+                onClick={() => changeMode('register')}
+                disabled={isLoading}
+                type="button"
+              >
+                Create account
+              </button>
+              <button
+                className={`auth-tab${!isRegister ? ' active' : ''}`}
+                aria-pressed={!isRegister}
+                onClick={() => changeMode('login')}
+                disabled={isLoading}
+                type="button"
+              >
+                Sign in
+              </button>
+            </div>
+
+            {notice && <div className="notice-message" role="status"><Check size={17} />{notice}</div>}
+            {error && <div className="error-message" role="alert">{error}</div>}
+
+            <form className="auth-form" onSubmit={handleSubmit}>
+              {isRegister && (
+                <Field
+                  id="name"
+                  label="Your name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="e.g. Jamie Parker"
+                  icon={UserRound}
+                  autoComplete="name"
                   disabled={isLoading}
-                  type="button"
-                >
-                  Create account
-                </button>
-                <button
-                  className={`auth-tab${!isRegister ? ' active' : ''}`}
-                  aria-pressed={!isRegister}
-                  onClick={() => changeMode('login')}
-                  disabled={isLoading}
-                  type="button"
-                >
-                  Sign in
-                </button>
-              </div>
-
-              {notice && <div className="notice-message" role="status"><Check size={17} />{notice}</div>}
-              {error && <div className="error-message" role="alert">{error}</div>}
-
-              <form className="auth-form" onSubmit={handleSubmit}>
-                {isRegister && (
-                  <Field
-                    id="name"
-                    label="Your name"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="e.g. Jamie Parker"
-                    icon={UserRound}
-                    autoComplete="name"
+                />
+              )}
+              <Field
+                id="email"
+                label="Email address"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@example.com"
+                icon={Mail}
+                autoComplete="email"
+                disabled={isLoading}
+              />
+              <Field
+                id="password"
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="At least 8 characters"
+                icon={LockKeyhole}
+                autoComplete={isRegister ? 'new-password' : 'current-password'}
+                disabled={isLoading}
+                trailing={
+                  <button
+                    className="password-toggle"
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
                     disabled={isLoading}
-                  />
-                )}
-                <Field
-                  id="email"
-                  label="Email address"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@example.com"
-                  icon={Mail}
-                  autoComplete="email"
-                  disabled={isLoading}
-                />
-                <Field
-                  id="password"
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="At least 8 characters"
-                  icon={LockKeyhole}
-                  autoComplete={isRegister ? 'new-password' : 'current-password'}
-                  disabled={isLoading}
-                  trailing={
-                    <button
-                      className="password-toggle"
-                      type="button"
-                      onClick={() => setShowPassword((visible) => !visible)}
-                      disabled={isLoading}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                    </button>
-                  }
-                />
-                {!isRegister && (
-                  <div className="form-meta">
-                    <span className="secure-note"><LockKeyhole size={13} /> Secure sign in</span>
-                    <span className="password-hint">Forgot password? Contact support</span>
-                  </div>
-                )}
-                {isRegister && (
-                  <p className="terms-note">
-                    By creating an account, you agree to use FormSlug responsibly and keep your sign-in details secure.
-                  </p>
-                )}
-                <button className="submit-button" type="submit" disabled={isLoading}>
-                  <span>{isLoading
-                    ? (isRegister ? 'Creating account...' : 'Signing in...')
-                    : (isRegister ? 'Create your account' : 'Sign in')}</span>
-                  {isLoading
-                    ? <span className="button-spinner" aria-hidden="true" />
-                    : <ArrowRight size={17} strokeWidth={2.2} />}
-                </button>
-              </form>
-
-              <div className="form-bottom">
-                <span className="bottom-rule" />
-                <p>
-                  {isRegister ? 'Already have an account?' : 'New to FormSlug?'}
-                  <button type="button" disabled={isLoading} onClick={() => changeMode(isRegister ? 'login' : 'register')}>
-                    {isRegister ? ' Sign in' : ' Create an account'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
+                }
+              />
+              {!isRegister && (
+                <div className="form-meta">
+                  <span className="secure-note"><LockKeyhole size={13} /> Secure sign in</span>
+                  <span className="password-hint">Forgot password? Contact support</span>
+                </div>
+              )}
+              {isRegister && (
+                <p className="terms-note">
+                  By creating an account, you agree to use FormSlug responsibly and keep your sign-in details secure.
                 </p>
-                <span className="bottom-rule" />
-              </div>
-              <div className="privacy-note"><LockKeyhole size={13} /> Your information is encrypted and kept private.</div>
+              )}
+              <button className="submit-button" type="submit" disabled={isLoading}>
+                <span>{isLoading
+                  ? (isRegister ? 'Creating account...' : 'Signing in...')
+                  : (isRegister ? 'Create your account' : 'Sign in')}</span>
+                {isLoading
+                  ? <span className="button-spinner" aria-hidden="true" />
+                  : <ArrowRight size={17} strokeWidth={2.2} />}
+              </button>
+            </form>
+
+            <div className="form-bottom">
+              <span className="bottom-rule" />
+              <p>
+                {isRegister ? 'Already have an account?' : 'New to FormSlug?'}
+                <button type="button" disabled={isLoading} onClick={() => changeMode(isRegister ? 'login' : 'register')}>
+                  {isRegister ? ' Sign in' : ' Create an account'}
+                </button>
+              </p>
+              <span className="bottom-rule" />
+            </div>
+            <div className="privacy-note"><LockKeyhole size={13} /> Your information is encrypted and kept private.</div>
           </>
         </div>
         <footer className="auth-footer">
           <span>© {new Date().getFullYear()} FormSlug</span>
           <span className="footer-divider" />
           <span>Built for better conversations</span>
-          <a href={API_DOCS_URL} target="_blank" rel="noreferrer" aria-label="Open API documentation">
+          <a href="https://formslug.onrender.com/api/docs/" target="_blank" rel="noreferrer" aria-label="Open API documentation">
             API docs <MoveUpRight size={13} />
           </a>
         </footer>
