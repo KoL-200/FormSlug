@@ -8,6 +8,14 @@ datasource db {
 
 // ------ Enum ------ 
 
+enum FormFieldType {
+    TEXT
+    TEXTAREA
+    EMAIL
+    SELECT
+    CHECKBOX
+}
+
 enum NotificationStatus {
     PENDING
     SENT
@@ -78,9 +86,30 @@ model Form {
     updated_at         DateTime  @updatedAt
 
     project    Project      @relation(fields: [project_id], references: [id], onDelete: Restrict)
+    formFields FormField[]
     submission Submission[]
 
     @@index([project_id, created_at])
+}
+
+model FormField {
+    id          String    @id @default(uuid())
+    form_id     String
+    key         String
+    type        FormFieldType
+    label       String
+    required    Boolean   @default(false)
+    options     Json?
+    placeholder String?
+    position    Int       @default(0)
+    deleted_at  DateTime?
+    created_at  DateTime  @default(now())
+    updated_at  DateTime  @updatedAt
+
+    form Form @relation(fields: [form_id], references: [id], onDelete: Cascade)
+
+    @@unique([form_id, key])
+    @@index([form_id, position])
 }
 
 model Submission {
