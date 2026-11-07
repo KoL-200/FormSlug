@@ -2,7 +2,7 @@ const zod = require("zod");
 
 const createFieldSchema = zod
     .object({
-        label: zod.string().min(1, "Label is required"),
+        label: zod.string().min(1, "Label is required").max(40, "Label cannot exceed 40 characters"),
         type: zod.enum(["TEXT", "EMAIL", "TEXTAREA", "SELECT", "CHECKBOX"]),
         options: zod.array(zod.string()).optional(),
     })

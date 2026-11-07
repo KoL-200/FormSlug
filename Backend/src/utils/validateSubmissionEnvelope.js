@@ -57,6 +57,7 @@ function validateSubmissionEnvelope(body) {
 }
 
 module.exports = {
+    DANGEROUS_KEYS,
     MAX_SUBMISSION_FIELDS,
     MAX_SUBMISSION_VALUE_LENGTH,
     sanitizeAndValidate,
