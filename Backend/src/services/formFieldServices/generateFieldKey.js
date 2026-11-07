@@ -26,7 +26,7 @@ const generateFieldKey = async (formId, label) => {
         baseKey = `field_${baseKey}`;
     }
 
-    baseKey = baseKey.slice(0, MAX_FIELD_KEY_LENGTH);
+    baseKey = baseKey.slice(0, MAX_FIELD_KEY_LENGTH).replace(/_+$/, '');
     let key = baseKey;
     let suffix = 2;
     const existingKeys = await prisma.formField.findMany({
@@ -40,7 +40,10 @@ const generateFieldKey = async (formId, label) => {
         if (suffixText.length >= MAX_FIELD_KEY_LENGTH) {
             throw new BadRequestError('Unable to generate a unique field key');
         }
-        key = `${baseKey.slice(0, MAX_FIELD_KEY_LENGTH - suffixText.length)}${suffixText}`;
+        const truncatedBase = baseKey
+            .slice(0, MAX_FIELD_KEY_LENGTH - suffixText.length)
+            .replace(/_+$/, '');
+        key = `${truncatedBase}${suffixText}`;
         suffix += 1;
     }
 

@@ -2,6 +2,8 @@ jest.mock('../src/config/database.Config', () => ({
     prisma: {
         formField: {
             findMany: jest.fn(),
+            count: jest.fn(),
+            aggregate: jest.fn(),
             create: jest.fn(),
         },
     },
@@ -16,6 +18,8 @@ const { createFieldSchema } = require('../src/validators/FormFieldSchema/createF
 describe('generateFieldKey', () => {
     beforeEach(() => {
         prisma.formField.findMany.mockReset().mockResolvedValue([]);
+        prisma.formField.count.mockReset().mockResolvedValue(0);
+        prisma.formField.aggregate.mockReset().mockResolvedValue({ _max: { position: null } });
         prisma.formField.create.mockReset();
     });
 
@@ -54,6 +58,15 @@ describe('generateFieldKey', () => {
         expect(key.endsWith('_2')).toBe(true);
     });
 
+    it('does not leave a trailing underscore when truncating a label', async () => {
+        const label = `${'a'.repeat(39)} many words after the boundary`;
+
+        const key = await generateFieldKey('form-1', label);
+
+        expect(key).toHaveLength(39);
+        expect(key.endsWith('_')).toBe(false);
+    });
+
     it('creates a field with its generated key and provided attributes', async () => {
         const field = { id: 'field-1', key: 'phone_number' };
         prisma.formField.create.mockResolvedValue(field);
@@ -71,9 +84,46 @@ describe('generateFieldKey', () => {
                 label: 'Phone number',
                 type: 'TEXT',
                 key: 'phone_number',
+                position: 0,
                 required: true,
             },
         });
+    });
+
+    it('sets the next position based on all fields, including deleted ones', async () => {
+        prisma.formField.aggregate.mockResolvedValue({ _max: { position: 7 } });
+        prisma.formField.create.mockResolvedValue({ id: 'field-1', position: 8 });
+
+        await createField({
+            formId: 'form-1',
+            label: 'Phone number',
+            type: 'TEXT',
+        });
+
+        expect(prisma.formField.aggregate).toHaveBeenCalledWith({
+            where: { form_id: 'form-1' },
+            _max: { position: true },
+        });
+        expect(prisma.formField.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({ position: 8 }),
+        });
+    });
+
+    it('rejects when the form already has 40 active fields', async () => {
+        prisma.formField.count.mockResolvedValue(40);
+
+        await expect(createField({
+            formId: 'form-1',
+            label: 'Phone number',
+            type: 'TEXT',
+        })).rejects.toMatchObject({
+            statusCode: 409,
+            message: expect.stringContaining('40 active fields'),
+        });
+        expect(prisma.formField.count).toHaveBeenCalledWith({
+            where: { form_id: 'form-1', deleted_at: null },
+        });
+        expect(prisma.formField.create).not.toHaveBeenCalled();
     });
 
     it('regenerates the key and retries a unique-key race twice', async () => {
@@ -128,12 +178,62 @@ describe('generateFieldKey', () => {
 });
 
 describe('createFieldSchema', () => {
-    it('rejects labels longer than 40 characters', () => {
+    it('trims labels and validates label length', () => {
+        expect(createFieldSchema.parse({ label: ' Phone ', type: 'TEXT' }).label).toBe('Phone');
         const result = createFieldSchema.safeParse({
             label: 'a'.repeat(41),
             type: 'TEXT',
         });
 
         expect(result.success).toBe(false);
+    });
+
+    it('accepts and trims optional field attributes', () => {
+        expect(createFieldSchema.parse({
+            label: ' Name ',
+            type: 'TEXT',
+            required: true,
+            placeholder: ' Enter name ',
+        })).toMatchObject({
+            label: 'Name',
+            required: true,
+            placeholder: 'Enter name',
+        });
+    });
+
+    it('requires non-empty, unique SELECT options within the limits', () => {
+        expect(createFieldSchema.safeParse({ label: 'Choice', type: 'SELECT', options: [] }).success).toBe(false);
+        expect(createFieldSchema.safeParse({
+            label: 'Choice',
+            type: 'SELECT',
+            options: [' Yes ', 'Yes'],
+        }).success).toBe(false);
+        expect(createFieldSchema.safeParse({
+            label: 'Choice',
+            type: 'SELECT',
+            options: ['a'.repeat(101)],
+        }).success).toBe(false);
+        expect(createFieldSchema.safeParse({
+            label: 'Choice',
+            type: 'SELECT',
+            options: Array.from({ length: 31 }, (_, index) => `Option ${index}`),
+        }).success).toBe(false);
+    });
+
+    it('rejects invalid attributes and unexpected keys', () => {
+        expect(createFieldSchema.safeParse({
+            label: 'Choice',
+            type: 'TEXT',
+            options: ['A'],
+        }).success).toBe(false);
+        expect(createFieldSchema.safeParse({
+            label: 'Name',
+            type: 'TEXT',
+            extra: true,
+        }).success).toBe(false);
+        expect(createFieldSchema.safeParse({
+            label: '   ',
+            type: 'TEXT',
+        }).success).toBe(false);
     });
 });
