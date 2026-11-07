@@ -16,6 +16,7 @@ const getProjectsRoutes = require('./projectRoutes/getProjects.Routes')
 const updateProjectRoutes = require('./projectRoutes/updateProject.Routes')
 const deleteProjectRoutes = require('./projectRoutes/deleteProject.Routes')
 const createFormRoutes = require('./projectRoutes/createForm.Routes')
+const formFieldRoutes = require('./projectRoutes/formField.Routes')
 const updateFormRoutes = require('./projectRoutes/updateForm.Routes')
 const deleteFormRoutes = require('./projectRoutes/deleteForm.Routes')
 const listSubmissionsRoutes = require('./projectRoutes/listSubmissions.Routes')
@@ -43,6 +44,7 @@ router.use('/', getProjectsRoutes)
 router.use('/', updateProjectRoutes)
 router.use('/', deleteProjectRoutes)
 router.use('/', createFormRoutes);
+router.use('/', formFieldRoutes);
 router.use('/', updateFormRoutes);
 router.use('/', deleteFormRoutes);
 router.use('/', listSubmissionsRoutes);
