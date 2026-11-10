@@ -3,23 +3,22 @@ const { getCachedForm, setCachedForm } = require('../../utils/FormCache');
 
 async function activeFormBySlug(slug) {
     if (process.env.NODE_ENV === 'test') {
-        return prisma.form.findUnique({ where: { slug } });
+        const form = await prisma.form.findUnique({ where: { slug } });
+        return form && !form.deleted_at ? form : null;
     }
 
     const cached = await getCachedForm(slug);
     if (cached) {
-        // console.log('cache hit')
-        return cached
-    };
+        return cached;
+    }
 
-    // console.log('db hit')
     const form = await prisma.form.findUnique({ where: { slug } });
 
     if (form && !form.deleted_at && form.is_active) {
         await setCachedForm(slug, form);
     }
 
-    return form;
+    return form && !form.deleted_at ? form : null;
 }
 
 module.exports = {

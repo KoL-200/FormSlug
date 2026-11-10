@@ -10,7 +10,7 @@ jest.mock('../src/config/database.Config', () => ({
 }));
 
 const { prisma } = require('../src/config/database.Config');
-const { createField } = require('../src/services/formFieldServices/createField');
+const { createField } = require('../src/services/formFieldServices/formField.Services');
 const { generateFieldKey } = require('../src/services/formFieldServices/generateFieldKey');
 const { DANGEROUS_KEYS } = require('../src/utils/validateSubmissionEnvelope');
 const { createFieldSchema } = require('../src/validators/FormFieldSchema/createField');

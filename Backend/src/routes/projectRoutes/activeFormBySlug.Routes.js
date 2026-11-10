@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { activeFormBySlugController } = require('../../controllers/projectControllers/activeFormBySlug.Controller.js');
+const { activeFormBySlugController, publicFormBySlugController, publicFormRateLimit } = require('../../controllers/projectControllers/activeFormBySlug.Controller.js');
 const submissionRateLimit = require('../../middleware/submissionRateLimit.Middleware.js');
 
 /**
@@ -62,5 +62,6 @@ const submissionRateLimit = require('../../middleware/submissionRateLimit.Middle
  *         $ref: '#/components/responses/RateLimited'
  */
 router.post('/f/:slug', submissionRateLimit, activeFormBySlugController);
+router.get('/f/:slug', publicFormRateLimit, publicFormBySlugController);
 
 module.exports = router;

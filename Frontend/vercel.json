@@ -9,6 +9,10 @@
             "destination": "https://formslug.onrender.com/f/:path*"
         },
         {
+            "source": "/s/:path*",
+            "destination": "/index.html"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }
