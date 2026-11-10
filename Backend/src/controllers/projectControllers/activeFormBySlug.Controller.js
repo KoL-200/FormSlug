@@ -1,8 +1,14 @@
 const { activeFormBySlug } = require('../../services/projectServices/activeFormSlug.Services');
+const {
+    getPublicFormBySlug,
+    getPublicFormFieldsBySlug,
+} = require('../../services/projectServices/publicForm.Services');
 const { validateSubmissionEnvelope } = require('../../utils/validateSubmissionEnvelope');
+const { validateAgainstFields } = require('../../utils/validateAgainstFields');
 const { sendSubmissionNotification } = require('../../services/NotificationServices/notification.Services')
 const { processWebhookDeliveries } = require('../../services/webhookServices/webhookDelivery.Services')
 const logger = require('../../config/logger');
+const { perIpRateLimit } = require('../../lib/rateLimiter');
 
 const { prisma } = require('../../config/database.Config');
 
@@ -32,11 +38,20 @@ const activeFormBySlugController = async (req, res) => {
         }
     }
 
-    if (req.body[HONEYPOT_FIELD]) {
+    if (req.body && req.body[HONEYPOT_FIELD]) {
         return res.status(200).json({ success: true });
     }
 
-    req.body = validateSubmissionEnvelope(req.body);
+    const envelope = validateSubmissionEnvelope(req.body);
+    const fields = await getPublicFormFieldsBySlug(slug);
+    const validation = validateAgainstFields(fields, envelope);
+
+    if (validation.errors) {
+        return res.status(422).json({
+            error: 'Submission validation failed',
+            details: validation.errors,
+        });
+    }
 
     const ipAddress = req.ip;
     const userAgent = req.headers['user-agent'] || 'unknown';
@@ -46,7 +61,7 @@ const activeFormBySlugController = async (req, res) => {
             {
                 data: {
                     form_id: form.id,
-                    data: req.body,
+                    data: validation.data,
                     ip_address: ipAddress,
                     user_agent: userAgent,
                 }
@@ -91,6 +106,32 @@ const activeFormBySlugController = async (req, res) => {
     res.status(200).json({ success: true });
 }
 
+const publicFormBySlugController = async (req, res) => {
+    const payload = await getPublicFormBySlug(req.params.slug);
+    return res.status(200).json(payload);
+};
+
+const publicFormRateLimit = async (req, res, next) => {
+    if (process.env.NODE_ENV === 'test') {
+        return next();
+    }
+
+    const ipKey = req.ip;
+
+    try {
+        const ipResult = await perIpRateLimit.limit(ipKey);
+        if (!ipResult.success) {
+            return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+        }
+    } catch (err) {
+        console.error('Public form rate limiter error — allowing request through:', err.message);
+    }
+
+    next();
+};
+
 module.exports = {
-    activeFormBySlugController
+    activeFormBySlugController,
+    publicFormBySlugController,
+    publicFormRateLimit,
 }

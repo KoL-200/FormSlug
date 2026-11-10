@@ -1,9 +1,14 @@
 const { prisma } = require('../../config/database.Config');
+const { invalidateFormCache } = require('../../utils/FormCache');
 
 const deleteProject = async (projectId) => {
     const deletedAt = new Date();
+    const forms = await prisma.form.findMany({
+        where: { project_id: projectId },
+        select: { slug: true },
+    });
 
-    return prisma.$transaction(async (transaction) => {
+    const deletedProject = await prisma.$transaction(async (transaction) => {
         await transaction.form.updateMany({
             where: {
                 project_id: projectId,
@@ -22,6 +27,9 @@ const deleteProject = async (projectId) => {
             },
         });
     });
+
+    await Promise.all(forms.map(({ slug }) => invalidateFormCache(slug)));
+    return deletedProject;
 };
 
 module.exports = {

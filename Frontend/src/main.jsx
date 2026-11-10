@@ -1,10 +1,20 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
+import App, { PublicFormPage } from './App.jsx';
 import './styles.css';
+
+const publicFormMatch = window.location.pathname.match(/^\/s\/([^/]+)\/?$/);
+let publicSlug = '';
+if (publicFormMatch) {
+  try {
+    publicSlug = decodeURIComponent(publicFormMatch[1]);
+  } catch {
+    publicSlug = publicFormMatch[1];
+  }
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    {publicFormMatch ? <PublicFormPage slug={publicSlug} /> : <App />}
   </React.StrictMode>,
 );

@@ -3,6 +3,7 @@ const { prisma } = require('../../config/database.Config');
 const { signAccessToken, signRefreshToken } = require('../../utils/jwt');
 const { parseDuration } = require('../../utils/duration');
 const { UnauthorizedError, NotFoundError, BadRequestError } = require('../../utils/AppError');
+const { invalidateFormCache } = require('../../utils/FormCache');
 const env = require('../../config/env.Config');
 const jwt = require('jsonwebtoken');
 
@@ -255,8 +256,12 @@ const softDeleteUser = async (userId) => {
 
     const now = new Date()
     const scheduledPurgeDate = new Date(now.getTime() + GRACE_PRTIOD_DAYS * 24 * 60 * 60 * 1000)
+    const forms = await prisma.form.findMany({
+        where: { project: { user_id: userId } },
+        select: { slug: true },
+    });
 
-    return prisma.$transaction([
+    const result = await prisma.$transaction([
         prisma.user.update({
             where: { id: userId },
             data: {
@@ -277,6 +282,9 @@ const softDeleteUser = async (userId) => {
             }
         })
     ])
+
+    await Promise.all(forms.map(({ slug }) => invalidateFormCache(slug)));
+    return result
 }
 
 module.exports = {

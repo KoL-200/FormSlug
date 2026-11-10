@@ -42,6 +42,238 @@ function getPublicFormUrl(slug) {
   return `${apiOrigin || window.location.origin}/f/${encodeURIComponent(slug)}`;
 }
 
+function getPublicFormApiPath(slug) {
+  return `/f/${encodeURIComponent(slug)}`;
+}
+
+function getHostedFormUrl(slug) {
+  return `${window.location.origin}/s/${encodeURIComponent(slug)}`;
+}
+
+const publicFieldControls = {
+  TEXT: 'text',
+  TEXTAREA: 'textarea',
+  EMAIL: 'email',
+  SELECT: 'select',
+  CHECKBOX: 'checkbox',
+};
+
+export function PublicFormPage({ slug }) {
+  const [form, setForm] = useState(null);
+  const [pageState, setPageState] = useState('loading');
+  const [values, setValues] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formMessage, setFormMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadForm() {
+      setPageState('loading');
+      try {
+        const response = await fetch(getPublicFormApiPath(slug), { signal: controller.signal });
+        if (response.status === 404) return setPageState('not-found');
+        if (response.status === 403) return setPageState('inactive');
+        if (response.status === 429) return setPageState('rate-limited');
+        if (!response.ok) return setPageState('error');
+
+        const result = await response.json();
+        if (!result.data || !Array.isArray(result.data.fields)) return setPageState('error');
+
+        setForm(result.data);
+        setValues(Object.fromEntries(result.data.fields.map((field) => [
+          field.key,
+          field.type === 'CHECKBOX' ? false : '',
+        ])));
+        setPageState('ready');
+      } catch (requestError) {
+        if (requestError.name !== 'AbortError') setPageState('error');
+      }
+    }
+
+    loadForm();
+    return () => controller.abort();
+  }, [slug]);
+
+  async function submitForm(event) {
+    event.preventDefault();
+    setFieldErrors({});
+    setFormMessage('');
+    setIsSubmitting(true);
+
+    const data = { ...values };
+    const honeypot = event.currentTarget.elements.namedItem('_gotcha');
+    if (honeypot?.value) data._gotcha = honeypot.value;
+
+    try {
+      const response = await fetch(getPublicFormApiPath(slug), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (response.status === 404) return setPageState('not-found');
+      if (response.status === 403) return setPageState('inactive');
+      if (response.status === 429) {
+        setFormMessage('Too many attempts. Please wait a moment and try again.');
+        return;
+      }
+
+      const result = await response.json().catch(() => ({}));
+      if (response.status === 422) {
+        const errors = {};
+        for (const detail of result.details || []) {
+          if (detail?.field && detail?.message) errors[detail.field] = detail.message;
+        }
+        setFieldErrors(errors);
+        setFormMessage('Please check the highlighted fields.');
+        return;
+      }
+      if (!response.ok) {
+        setFormMessage(result.error || 'Your response could not be sent. Please try again.');
+        return;
+      }
+
+      setPageState('success');
+    } catch {
+      setFormMessage('Unable to reach the form right now. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (pageState !== 'ready' && pageState !== 'success') {
+    const messages = {
+      loading: ['Loading form', 'Getting the latest fields…'],
+      'not-found': ['Form not found', 'This form link may be incorrect or no longer available.'],
+      inactive: ['Not accepting responses', 'The owner has paused this form.'],
+      'rate-limited': ['Please try again later', 'This form has received too many requests.'],
+      error: ['Unable to load form', 'Please check your connection and try again.'],
+    };
+    const [title, description] = messages[pageState] || messages.error;
+    return (
+      <main className="public-page">
+        <div className="public-brand"><span><Shapes size={18} /></span> formslug</div>
+        <section className="public-state" role={pageState === 'loading' ? 'status' : 'alert'}>
+          {pageState === 'loading' && <span className="public-spinner" aria-hidden="true" />}
+          <h1>{title}</h1>
+          <p>{description}</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (pageState === 'success') {
+    return (
+      <main className="public-page">
+        <div className="public-brand"><span><Shapes size={18} /></span> formslug</div>
+        <section className="public-state" role="status">
+          <span className="public-success-mark"><Check size={21} /></span>
+          <h1>Response sent</h1>
+          <p>Thank you. Your response has been received.</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="public-page">
+      <div className="public-brand"><span><Shapes size={18} /></span> formslug</div>
+      <section className="public-form-shell">
+        <header className="public-form-heading">
+          <span className="public-kicker">FORM</span>
+          <h1>{form.name}</h1>
+        </header>
+        <form className="public-form" onSubmit={submitForm} noValidate>
+          {form.fields.map((field, index) => {
+            const fieldType = String(field.type || '').toUpperCase();
+            const control = publicFieldControls[fieldType] || 'text';
+            const id = `public-field-${index}`;
+            const errorId = `${id}-error`;
+            const commonProps = {
+              id,
+              name: field.key,
+              required: Boolean(field.required),
+              placeholder: field.placeholder || undefined,
+              value: values[field.key] ?? '',
+              'aria-invalid': Boolean(fieldErrors[field.key]),
+              'aria-describedby': fieldErrors[field.key] ? errorId : undefined,
+              onChange: (event) => {
+                const nextValue = control === 'checkbox' ? event.target.checked : event.target.value;
+                setValues((current) => ({ ...current, [field.key]: nextValue }));
+                setFieldErrors((current) => {
+                  if (!current[field.key]) return current;
+                  const next = { ...current };
+                  delete next[field.key];
+                  return next;
+                });
+              },
+            };
+
+            return (
+              <div className={`public-field${control === 'checkbox' ? ' public-checkbox-field' : ''}`} key={field.key}>
+                {control === 'checkbox' ? (
+                  <label className="public-checkbox-label" htmlFor={id}>
+                    <input
+                      id={id}
+                      name={field.key}
+                      type="checkbox"
+                      checked={Boolean(values[field.key])}
+                      required={Boolean(field.required)}
+                      aria-invalid={Boolean(fieldErrors[field.key])}
+                      aria-describedby={fieldErrors[field.key] ? errorId : undefined}
+                      onChange={(event) => {
+                        setValues((current) => ({ ...current, [field.key]: event.target.checked }));
+                        setFieldErrors((current) => {
+                          if (!current[field.key]) return current;
+                          const next = { ...current };
+                          delete next[field.key];
+                          return next;
+                        });
+                      }}
+                    />
+                    <span>{field.label}{field.required && <span aria-hidden="true"> *</span>}</span>
+                  </label>
+                ) : (
+                  <>
+                    <label className="public-field-label" htmlFor={id}>
+                      {field.label}{field.required && <span aria-hidden="true"> *</span>}
+                    </label>
+                    {control === 'textarea' ? (
+                      <textarea {...commonProps} maxLength={5000} rows={4} />
+                    ) : control === 'select' ? (
+                      <select {...commonProps}>
+                        <option value="">{field.placeholder || 'Choose an option'}</option>
+                        {(Array.isArray(field.options) ? field.options : []).map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input {...commonProps} type={control} maxLength={1000} />
+                    )}
+                  </>
+                )}
+                {fieldErrors[field.key] && <span className="public-field-error" id={errorId}>{fieldErrors[field.key]}</span>}
+              </div>
+            );
+          })}
+          <div className="public-honeypot" aria-hidden="true">
+            <label htmlFor="public-gotcha">Leave this field empty</label>
+            <input id="public-gotcha" name="_gotcha" type="text" tabIndex={-1} autoComplete="off" />
+          </div>
+          {formMessage && <p className="public-form-message" role="alert">{formMessage}</p>}
+          <button className="public-submit" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Sending…' : 'Send response'}
+            {!isSubmitting && <ArrowRight size={16} />}
+          </button>
+        </form>
+      </section>
+      <footer className="public-footer">Powered by FormSlug</footer>
+    </main>
+  );
+}
+
 let sessionRestorePromise;
 let accessTokenRefreshPromise;
 let activeAccessToken = '';
@@ -2136,12 +2368,12 @@ function Dashboard({ onLogout, onUserUpdated, onCreateForm, accessToken, user })
                           <button
                             className="row-action-button"
                             type="button"
-                            aria-label={`Copy public endpoint for ${form.name}`}
-                            title="Copy public endpoint"
+                            aria-label={`Copy hosted form link for ${form.name}`}
+                            title="Copy hosted form link"
                             onClick={async () => {
                               try {
-                                await navigator.clipboard.writeText(getPublicFormUrl(form.slug));
-                                setNotice('Public submission URL copied.');
+                                await navigator.clipboard.writeText(getHostedFormUrl(form.slug));
+                                setNotice('Hosted form link copied.');
                               } catch {
                                 setError('Clipboard access is unavailable in this browser.');
                               }
