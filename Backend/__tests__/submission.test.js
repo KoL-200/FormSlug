@@ -85,6 +85,43 @@ describe('Public submission endpoint POST /f/:slug', () => {
         });
     });
 
+    it('serves and validates builder fields stored in form config', async () => {
+        await prisma.form.update({
+            where: { id: form.id },
+            data: {
+                config: {
+                    description: 'A form from the dashboard builder',
+                    fields: [
+                        { id: 45, label: 'Your name', type: 'text', placeholder: 'Type your name', required: true },
+                    ],
+                },
+            },
+        });
+
+        const publicRes = await request(app)
+            .get(`/f/${form.slug}`);
+
+        expect(publicRes.status).toBe(200);
+        expect(publicRes.body.data.fields).toEqual([
+            {
+                key: 'legacy_45',
+                label: 'Your name',
+                type: 'TEXT',
+                required: true,
+                options: null,
+                placeholder: 'Type your name',
+            },
+        ]);
+
+        const submitRes = await request(app)
+            .post(`/f/${form.slug}`)
+            .send({ legacy_45: 'Ada' });
+
+        expect(submitRes.status).toBe(200);
+        const submission = await prisma.submission.findFirst({ where: { form_id: form.id } });
+        expect(submission.data).toEqual({ legacy_45: 'Ada' });
+    });
+
     it('returns field-keyed 422 details for invalid field values', async () => {
         await prisma.formField.createMany({
             data: [
