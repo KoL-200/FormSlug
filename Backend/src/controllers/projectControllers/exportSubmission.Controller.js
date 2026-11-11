@@ -1,10 +1,26 @@
 const { stringify } = require('csv-stringify');
 const { streamSubmissions } = require('../../services/projectServices/exportSubmission.Services');
+const { mapLegacyFormFields } = require('../../utils/legacyFormFields');
 const logger = require('../../config/logger');
+
+function normalizeLegacySubmissionData(data, fields) {
+    const normalized = { ...data };
+
+    for (const field of fields) {
+        if (!Object.hasOwn(normalized, field.legacyKey)) continue;
+        if (!Object.hasOwn(normalized, field.key)) {
+            normalized[field.key] = normalized[field.legacyKey];
+        }
+        delete normalized[field.legacyKey];
+    }
+
+    return normalized;
+}
 
 const exportSubmissionsController = async (req, res) => {
     const formId = req.form.id;
     const includeDeleted = req.query.includeDeleted === 'true';
+    const legacyFields = mapLegacyFormFields(req.form.config?.fields);
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader(
@@ -30,7 +46,7 @@ const exportSubmissionsController = async (req, res) => {
                 id: row.id,
                 created_at: row.created_at.toISOString(),
                 ip_address: row.ip_address,
-                data: JSON.stringify(row.data),
+                data: JSON.stringify(normalizeLegacySubmissionData(row.data, legacyFields)),
             });
         }
     } catch (err) {

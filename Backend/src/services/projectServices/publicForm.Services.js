@@ -2,47 +2,7 @@ const { prisma } = require('../../config/database.Config');
 const { activeFormBySlug } = require('./activeFormSlug.Services');
 const { getCachedPublicForm, setCachedPublicForm } = require('../../utils/FormCache');
 const { ForbiddenError, NotFoundError } = require('../../utils/AppError');
-
-const legacyFieldTypes = {
-    text: 'TEXT',
-    textarea: 'TEXTAREA',
-    email: 'EMAIL',
-    select: 'SELECT',
-    checkbox: 'CHECKBOX',
-};
-
-const mapLegacyFields = (fields = []) => {
-    if (!Array.isArray(fields)) return [];
-
-    const usedKeys = new Set();
-
-    return fields.map((fieldValue, index) => {
-        const field = fieldValue && typeof fieldValue === 'object' && !Array.isArray(fieldValue)
-            ? fieldValue
-            : {};
-        const idPart = String(field.id ?? index + 1).replace(/[^a-zA-Z0-9_-]/g, '_');
-        const baseKey = `legacy_${idPart || index + 1}`;
-        let key = baseKey;
-        let suffix = 2;
-
-        while (usedKeys.has(key)) {
-            key = `${baseKey}_${suffix}`;
-            suffix += 1;
-        }
-        usedKeys.add(key);
-
-        const type = legacyFieldTypes[String(field.type || '').toLowerCase()] || 'TEXT';
-
-        return {
-            key,
-            label: typeof field.label === 'string' ? field.label : '',
-            type,
-            required: Boolean(field.required),
-            options: type === 'SELECT' && Array.isArray(field.options) ? field.options : null,
-            placeholder: typeof field.placeholder === 'string' ? field.placeholder : null,
-        };
-    });
-};
+const { mapLegacyFormFields } = require('../../utils/legacyFormFields');
 
 const getPublicFormBySlug = async (slug) => {
     const form = await activeFormBySlug(slug);
@@ -80,7 +40,7 @@ const getPublicFormBySlug = async (slug) => {
     });
     const fields = storedFields.length > 0
         ? storedFields.filter((field) => field.deleted_at === null)
-        : mapLegacyFields(form.config?.fields);
+        : mapLegacyFormFields(form.config?.fields);
 
     const payload = {
         success: true,

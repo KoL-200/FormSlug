@@ -2,6 +2,73 @@ const { prisma } = require('../../config/database.Config');
 const { nanoid } = require('nanoid');
 const { invalidateFormCache } = require('../../utils/FormCache');
 const { redactForm, redactForms } = require('../../utils/redactForm')
+const { BadRequestError } = require('../../utils/AppError');
+const { uniqueFieldKey } = require('../../utils/fieldKey');
+
+const FORM_FIELD_TYPES = {
+    text: 'TEXT',
+    textarea: 'TEXTAREA',
+    email: 'EMAIL',
+    select: 'SELECT',
+    checkbox: 'CHECKBOX',
+    TEXT: 'TEXT',
+    TEXTAREA: 'TEXTAREA',
+    EMAIL: 'EMAIL',
+    SELECT: 'SELECT',
+    CHECKBOX: 'CHECKBOX',
+};
+
+function prepareFormFields(fields) {
+    if (!Array.isArray(fields)) {
+        throw new BadRequestError('Form fields must be an array');
+    }
+
+    const usedKeys = new Set();
+
+    return fields.map((field, position) => {
+        if (!field || typeof field !== 'object' || Array.isArray(field)) {
+            throw new BadRequestError('Invalid form field');
+        }
+
+        const label = typeof field.label === 'string' ? field.label.trim() : '';
+        if (!label || label.length > 120) {
+            throw new BadRequestError('Field labels must be between 1 and 120 characters');
+        }
+
+        const type = Object.hasOwn(FORM_FIELD_TYPES, field.type)
+            ? FORM_FIELD_TYPES[field.type]
+            : null;
+        if (!type) {
+            throw new BadRequestError('Unsupported form field type');
+        }
+
+        const data = {
+            key: uniqueFieldKey(label, usedKeys),
+            label,
+            type,
+            required: Boolean(field.required),
+            placeholder: typeof field.placeholder === 'string' ? field.placeholder.trim() : null,
+            position,
+        };
+
+        if (type === 'SELECT') {
+            if (!Array.isArray(field.options) || field.options.length === 0 || field.options.length > 30) {
+                throw new BadRequestError('SELECT fields require between 1 and 30 options');
+            }
+            data.options = field.options.map((option) => {
+                if (typeof option !== 'string' || !option.trim() || option.trim().length > 100) {
+                    throw new BadRequestError('SELECT options must be between 1 and 100 characters');
+                }
+                return option.trim();
+            });
+            if (new Set(data.options).size !== data.options.length) {
+                throw new BadRequestError('SELECT options must be unique');
+            }
+        }
+
+        return data;
+    });
+}
 
 async function getUserEmail(userId) {
     return prisma.user.findUnique({
@@ -20,6 +87,7 @@ const createForm = async ({ projectId, userId, name, notificationEmail, config =
 
     const slug = nanoid(10);
     const apiKey = nanoid(32);
+    const fields = config.fields === undefined ? [] : prepareFormFields(config.fields);
 
     return prisma.form.create({
         data: {
@@ -29,6 +97,7 @@ const createForm = async ({ projectId, userId, name, notificationEmail, config =
             api_key: apiKey,
             config,
             notification_email: resolvedNotificationEmail,
+            ...(fields.length > 0 ? { formFields: { create: fields } } : {}),
         },
     });
 }

@@ -3,7 +3,11 @@ const { PrismaPg } = require('@prisma/adapter-pg');
 const env = require('./env.Config');
 const logger = require('./logger');
 
-const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+const databaseHost = new URL(env.DATABASE_URL).hostname;
+const isLocalDatabase = ['localhost', '127.0.0.1', '[::1]'].includes(databaseHost);
+const adapterOptions = { connectionString: env.DATABASE_URL };
+if (isLocalDatabase) adapterOptions.ssl = false;
+const adapter = new PrismaPg(adapterOptions);
 
 const prisma = new PrismaClient({
     adapter,
