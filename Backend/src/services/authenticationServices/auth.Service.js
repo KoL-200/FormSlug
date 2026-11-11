@@ -146,6 +146,7 @@ const refreshTokens = async (rawRefreshToken) => {
     try {
         payload = jwt.verify(rawRefreshToken, env.JWT_REFRESH_SECRET)
     } catch (err) {
+        console.warn('Refresh token verification failed:', err.name, err.message);
         throw new UnauthorizedError('Invalid refresh token')
     }
 
