@@ -50,6 +50,16 @@ function getHostedFormUrl(slug) {
   return `${window.location.origin}/s/${encodeURIComponent(slug)}`;
 }
 
+function makeSampleSubmission(fields) {
+  return Object.fromEntries(fields.map((field) => {
+    const type = String(field.type || '').toUpperCase();
+    if (type === 'EMAIL') return [field.key, 'test@example.com'];
+    if (type === 'SELECT') return [field.key, field.options?.[0] || ''];
+    if (type === 'CHECKBOX') return [field.key, Boolean(field.required)];
+    return [field.key, `Test ${field.label || 'response'}`];
+  }));
+}
+
 const publicFieldControls = {
   TEXT: 'text',
   TEXTAREA: 'textarea',
@@ -1473,9 +1483,23 @@ function FormDetailsPanel({ accessToken, form, onRotated }) {
           { signal: controller.signal },
         );
         if (!result.data?.id) throw new Error('The server returned an invalid form.');
+
+        if (form.slug) {
+          try {
+            const publicResponse = await fetch(getPublicFormUrl(form.slug), { signal: controller.signal });
+            if (publicResponse.ok) {
+              const publicResult = await publicResponse.json();
+              if (Array.isArray(publicResult.data?.fields) && publicResult.data.fields.length > 0) {
+                setSubmissionPayload(JSON.stringify(makeSampleSubmission(publicResult.data.fields), null, 2));
+              }
+            }
+          } catch {
+            if (controller.signal.aborted) return;
+          }
+        }
         if (!controller.signal.aborted) setDetails(result.data);
       } catch (requestError) {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && !details) {
           setError(requestError.message || 'Unable to load form details.');
         }
       } finally {
@@ -1539,6 +1563,12 @@ function FormDetailsPanel({ accessToken, form, onRotated }) {
         throw new Error('The public endpoint returned an invalid response.');
       }
       if (!response.ok) {
+        if (response.status === 422 && Array.isArray(result.details)) {
+          const fieldMessages = result.details
+            .map((detail) => detail?.field && detail?.message ? `${detail.field}: ${detail.message}` : detail?.message)
+            .filter(Boolean);
+          throw new Error(fieldMessages.join(' ') || result.error || 'Submission validation failed.');
+        }
         throw new Error(result.error || result.message || 'Unable to send the test submission.');
       }
       setNotice('Test submission accepted by the public endpoint.');

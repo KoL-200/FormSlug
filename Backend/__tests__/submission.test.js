@@ -5,6 +5,7 @@ const {
     createTestUser,
     createTestProject,
     createTestForm,
+    loginTestUser,
     cleanDatabase,
 } = require('./helpers');
 
@@ -104,7 +105,7 @@ describe('Public submission endpoint POST /f/:slug', () => {
         expect(publicRes.status).toBe(200);
         expect(publicRes.body.data.fields).toEqual([
             {
-                key: 'legacy_45',
+                key: 'your_name',
                 label: 'Your name',
                 type: 'TEXT',
                 required: true,
@@ -115,11 +116,84 @@ describe('Public submission endpoint POST /f/:slug', () => {
 
         const submitRes = await request(app)
             .post(`/f/${form.slug}`)
-            .send({ legacy_45: 'Ada' });
+            .send({ your_name: 'Ada' });
 
         expect(submitRes.status).toBe(200);
         const submission = await prisma.submission.findFirst({ where: { form_id: form.id } });
-        expect(submission.data).toEqual({ legacy_45: 'Ada' });
+        expect(submission.data).toEqual({ your_name: 'Ada' });
+    });
+
+    it('creates builder fields with canonical keys and accepts those keys on submission', async () => {
+        const user = await createTestUser();
+        const project = await createTestProject(user.id);
+        const accessToken = await loginTestUser(app, user.email);
+
+        const createRes = await request(app)
+            .post(`/api/v1/projects/${project.id}/forms`)
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({
+                name: 'Builder form',
+                config: {
+                    description: 'Created from the dashboard',
+                    fields: [
+                        { id: 1, label: 'Your name', type: 'text', placeholder: 'Type your name', required: true },
+                        { id: 2, label: 'Your name', type: 'text', required: false },
+                    ],
+                },
+            });
+
+        expect(createRes.status).toBe(201);
+        const createdForm = createRes.body.data;
+        const storedFields = await prisma.formField.findMany({
+            where: { form_id: createdForm.id },
+            orderBy: { position: 'asc' },
+        });
+        expect(storedFields.map((field) => field.key)).toEqual(['your_name', 'your_name_2']);
+
+        const publicRes = await request(app).get(`/f/${createdForm.slug}`);
+        expect(publicRes.body.data.fields.map((field) => field.key)).toEqual(['your_name', 'your_name_2']);
+
+        const submitRes = await request(app)
+            .post(`/f/${createdForm.slug}`)
+            .send({ your_name: 'Ada', your_name_2: 'Lovelace' });
+        expect(submitRes.status).toBe(200);
+
+        const submission = await prisma.submission.findFirst({ where: { form_id: createdForm.id } });
+        expect(submission.data).toEqual({ your_name: 'Ada', your_name_2: 'Lovelace' });
+    });
+
+    it('exports historical legacy submission keys using canonical field keys', async () => {
+        const user = await createTestUser();
+        const project = await createTestProject(user.id);
+        const legacyForm = await createTestForm(project.id);
+        await prisma.form.update({
+            where: { id: legacyForm.id },
+            data: {
+                config: {
+                    fields: [
+                        { id: 45, label: 'Your name', type: 'text', required: true },
+                    ],
+                },
+            },
+        });
+        await prisma.submission.create({
+            data: {
+                form_id: legacyForm.id,
+                data: { legacy_45: 'Ada' },
+                ip_address: '127.0.0.1',
+                user_agent: 'test',
+            },
+        });
+
+        const accessToken = await loginTestUser(app, user.email);
+        const exportRes = await request(app)
+            .get(`/api/v1/projects/${project.id}/forms/${legacyForm.id}/submissions/export`)
+            .set('Authorization', `Bearer ${accessToken}`);
+
+        expect(exportRes.status).toBe(200);
+        expect(exportRes.text).toContain('your_name');
+        expect(exportRes.text).toContain('Ada');
+        expect(exportRes.text).not.toContain('legacy_45');
     });
 
     it('returns field-keyed 422 details for invalid field values', async () => {

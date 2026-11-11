@@ -38,6 +38,10 @@ const activeFormBySlugController = async (req, res) => {
         }
     }
 
+    if (process.env.NODE_ENV === 'development') {
+        (req.log || logger).debug({ slug, payload: req.body }, 'Development submission payload');
+    }
+
     if (req.body && req.body[HONEYPOT_FIELD]) {
         return res.status(200).json({ success: true });
     }
